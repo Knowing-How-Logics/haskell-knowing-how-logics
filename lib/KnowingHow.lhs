@@ -4,7 +4,7 @@ Given a set of proposition letters $P$, we define the language $L_{KH}$ as follo
 s.t. $Kh(\psi,\varphi)$ is the modality expressing "the agent knows how to achieve $\varphi$ given $\psi$":
 
 \begin{code}
-module KH where
+module KnowingHow where
 
 type Proposition = Integer
 
