@@ -16,4 +16,11 @@ type Action = Integer
 
 type Plan = [Action]
 
+type State = Integer
+
+-- Both R_a and R_sigma share the same type
+type Rel = [(State, State)]
+
+
+
 \end{code}
