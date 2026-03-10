@@ -10,4 +10,10 @@ type Proposition = Integer
 
 data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
     deriving (Eq, Show, Ord)
+
+
+type Action = Integer
+
+type Plan = [Action]
+
 \end{code}
