@@ -19,7 +19,29 @@ type Plan = [Action]
 type State = Integer
 
 -- Both R_a and R_sigma share the same type
+-- Here we model the whole set of relations, without classification.
 type Rel = [(State, State)]
+
+-- The family of action-indexed relations (R_a)_a
+type Relations = [(Action, Rel)]
+
+-- Image of a state under R_a
+image :: Rel -> State -> [State]
+image r u = [v | (x, v) <- r, x == u]
+
+-- Given (R_a)_a and an action x, return R_x
+r_a :: Relations -> Action -> Rel
+r_a rs a =
+    case lookup a rs of
+        Just r  -> r
+        Nothing -> []
+
+-- Execute a plan from a given start state
+-- This corresponds to R_sigma(u)
+executePlan :: Relations -> State -> Plan -> [State]
+executePlan _  u []       = [u]
+executePlan rs u (a:sigma) =
+    nub (concat [ executePlan rs v sigma | v <- image (r_a rs a) u ])
 
 
 
