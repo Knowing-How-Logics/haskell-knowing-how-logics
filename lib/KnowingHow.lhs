@@ -10,6 +10,7 @@ The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=
 module KnowingHow where
 
 import Data.List (nub)
+import Data.List.NonEmpty (NonEmpty)
 
 type Proposition = Integer
 
@@ -30,7 +31,7 @@ type State = Integer
 type Valuation = [(State, [Proposition])]
 
 data AbilityMap = LTS {
-    states :: [State],
+    states :: NonEmpty State, -- NonEmpty must use the :| constructor, i.e. (n :| [n+1..])
     transitions :: Relations,
     valuation :: Valuation
 }
