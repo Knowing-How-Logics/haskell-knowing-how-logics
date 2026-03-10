@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE InstanceSigs #-}
 \section{Language Knowing How}\label{sec:KnowingHow}
 
 In this section we model the language of Knowing How $L_{KH}$ as by the definition of Y. Wang (2015). 
@@ -11,6 +13,7 @@ module KnowingHow where
 
 import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty)
+import Test.QuickCheck
 
 type Proposition = Integer
 
@@ -73,4 +76,45 @@ stronglyExecutableAt rs u (a:sigma) =
     let next = image (r_a rs a) u
     in  not (null next) &&
         all (\v -> stronglyExecutableAt rs v sigma) next
+\end{code}
+
+
+The satisfaction relation $\models$ defines when a formula $\varphi$ is true in a given state $w$ of an ability map $\mathcal{M}$.
+According to the current task requirements, the semantics for the $Kh$ operator are left undefined.
+
+\begin{code}
+-- The satisfaction relation: defines the truth of a formula at a given state
+isTrue :: (AbilityMap, State) -> Form -> Bool
+
+isTrue _ T = True
+isTrue (m, w) (P p) =
+  case lookup w (valuation m) of
+    Just props -> p `elem` props
+    Nothing -> False
+isTrue (m, w) (Neg f) = not (isTrue (m, w) f)
+isTrue (m, w) (Conj f1 f2) = isTrue (m, w) f1 && isTrue (m, w) f2
+isTrue (m, w) (KH f1 f2) = undefined
+
+-- Infix alias for the satisfaction relation
+(|=) :: (AbilityMap, State) -> Form -> Bool
+(|=) = isTrue
+\end{code}
+
+To correctly implement the random generation of formulas, we define an instance of the \texttt{Arbitrary} class for our \texttt{Form} datatype. We use the \texttt{sized} function to ensure that the generated formulas remain finite in size.
+
+\begin{code}
+instance Arbitrary Form where
+    arbitrary = sized randomForm
+
+-- Helper function to generate random formulas of a given size
+randomForm :: Int -> Gen Form
+randomForm 0 = oneof [P <$> choose (1, 5), return T]
+randomForm n = oneof 
+    [ P <$> choose (1, 5)
+    , return T
+    , Neg <$> randomForm (n - 1)
+    , Conj <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
+    , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
+    ]
+
 \end{code}
