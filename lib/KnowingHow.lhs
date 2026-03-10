@@ -4,6 +4,7 @@ Given a set of proposition letters $P$, we define the language $L_{KH}$ as follo
 s.t. $Kh(\psi,\varphi)$ is the modality expressing "the agent knows how to achieve $\varphi$ given $\psi$":
 
 \begin{code}
+import Data.List (nub)
 module KnowingHow where
 
 type Proposition = Integer
@@ -43,6 +44,12 @@ executePlan _  u []       = [u]
 executePlan rs u (a:sigma) =
     nub (concat [ executePlan rs v sigma | v <- image (r_a rs a) u ])
 
-
-
+-- Plan is SE or not at a state
+stronglyExecutableAt :: Relations -> State -> Plan -> Bool
+stronglyExecutableAt _  _ []       = True
+stronglyExecutableAt rs u (a:sigma) =
+    let next = image (r_a rs a) u
+    in  not (null next) &&
+        all (\v -> stronglyExecutableAt rs v sigma) next
+        
 \end{code}
