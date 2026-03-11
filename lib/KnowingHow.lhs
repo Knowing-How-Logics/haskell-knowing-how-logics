@@ -41,7 +41,28 @@ data AbilityMap = LTS {
 
 \end{code}
 
-TODO: comments about rel, relations, image, etc. (what they do, what they represent from the literature)
+In (Wang2015), two relational notions are introduced:
+
+\begin{itemize}
+    \item $R_a$, the atomic relation associated with an action $a$;
+    \item $R_{\sigma}$, the composite relation associated with a plan $\sigma$.
+\end{itemize}
+
+Both of these are binary relations on states. Therefore, in our implementation, we use the same Haskell type \texttt{Rel} to represent them, since both can be understood as sets of pairs of states.
+
+To represent the family of atomic relations $R = (R_a)_a$, we index relations by actions. This gives rise to the type \texttt{Relations}, corresponding to the collection of action-labelled transitions in the literature.
+
+We do not model $R_{\sigma}$ explicitly as a separate data structure. Instead, we only implement the operations needed to reason about plan execution and strong executability.
+
+For this purpose, we define the following helper functions:
+
+\begin{itemize}
+    \item \texttt{image}, which computes the image of a state under a relation, i.e. it collects all successor states of a given state;
+    \item \texttt{r\_a}, which takes an action $a$ and the family of relations $R$, and returns the indexed relation $R_a$;
+    \item \texttt{executePlan}, which computes all possible end states obtained after executing a plan from a given initial state;
+    \item \texttt{stronglyExecutableAt}, which determines whether a plan is strongly executable at a given state.
+\end{itemize}
+
 
 \begin{code}
 -- Both $R_a$ and $R_\sigma$ share the same type. 
