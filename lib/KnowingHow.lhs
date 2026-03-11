@@ -121,8 +121,8 @@ isTrue (m, w) (KH f1 f2) = undefined
 (|=) = isTrue
 \end{code}
 
-To correctly implement the random generation of formulas, we define an instance of the \texttt{Arbitrary} class for our \texttt{Form} datatype. 
-We use the \texttt{sized} function to ensure that the generated formulas remain finite in size.
+Finally, for this section we define the instances of Arbitrary for \texttt{Form} and \texttt{Arbitrary} respectively. 
+For \texttt{Form} we use the \texttt{sized} function to ensure that the generated formulas remain finite in size.
 
 \begin{code}
 instance Arbitrary Form where
@@ -138,8 +138,6 @@ instance Arbitrary Form where
             , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
             ]
 
--- generate (arbitrary:: Gen AbilityMap)
--- sample (arbitrary:: Gen AbilityMap)
 instance Arbitrary AbilityMap where
     arbitrary = do
         n <- choose (1,10)
