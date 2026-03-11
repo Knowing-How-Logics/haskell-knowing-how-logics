@@ -11,11 +11,11 @@ The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=
 \begin{code}
 module KnowingHow where
 
-import Data.List (nub)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List (nub, delete)
+import Data.List.NonEmpty (NonEmpty(..)) -- import NoneEmpty including its constructor :|
 import Test.QuickCheck
 
-type Proposition = Integer
+type Proposition = Int
 
 data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
     deriving (Eq, Show, Ord)
@@ -30,14 +30,14 @@ and $\mathcal{V}: \mathcal{S} \to 2^P$ is a valuation function. In the literatur
 \begin{code}
 type Action = Integer
 type Plan = [Action]
-type State = Integer
+type State = Int
 type Valuation = [(State, [Proposition])]
 
 data AbilityMap = LTS {
     states :: NonEmpty State, -- NonEmpty must use the :| constructor, i.e. (n :| [n+1..])
     transitions :: Relations,
     valuation :: Valuation
-}
+} deriving(Show)
 
 \end{code}
 
@@ -121,21 +121,51 @@ isTrue (m, w) (KH f1 f2) = undefined
 (|=) = isTrue
 \end{code}
 
-To correctly implement the random generation of formulas, we define an instance of the \texttt{Arbitrary} class for our \texttt{Form} datatype. We use the \texttt{sized} function to ensure that the generated formulas remain finite in size.
+To correctly implement the random generation of formulas, we define an instance of the \texttt{Arbitrary} class for our \texttt{Form} datatype. 
+We use the \texttt{sized} function to ensure that the generated formulas remain finite in size.
 
 \begin{code}
 instance Arbitrary Form where
-    arbitrary = sized randomForm
+    arbitrary = sized randomForm where
+        -- Helper function to generate random formulas of a given size
+        randomForm :: Int -> Gen Form
+        randomForm 0 = oneof [P <$> choose (1, 5), return T]
+        randomForm n = oneof 
+            [ P <$> choose (1, 5)
+            , return T
+            , Neg <$> randomForm (n - 1)
+            , Conj <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
+            , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
+            ]
 
--- Helper function to generate random formulas of a given size
-randomForm :: Int -> Gen Form
-randomForm 0 = oneof [P <$> choose (1, 5), return T]
-randomForm n = oneof 
-    [ P <$> choose (1, 5)
-    , return T
-    , Neg <$> randomForm (n - 1)
-    , Conj <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
-    , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
-    ]
+-- generate (arbitrary:: Gen AbilityMap)
+-- sample (arbitrary:: Gen AbilityMap)
+instance Arbitrary AbilityMap where
+    arbitrary = do
+        n <- choose (1,10)
+        let sts = [1..n] -- n states
+        rels <- generateRelations n sts
+        vals <- mapM generateValuation sts
+        return $ LTS (head sts :| tail sts) rels vals 
+        where
+            generateRelations n sts
+                | n == 1 = return []
+                | otherwise = do
+                    m <- choose (1,n) -- decide how many actions to generate
+                    actions <- vectorOf m (choose (1,5))
+                    mapM (generateRel sts) actions
+
+             -- for each action a, generate a relation labeled by a
+            generateRel sts a = do
+                x <- elements sts
+                y <- elements (delete x sts) -- avoid loops
+                return (a, [(x,y)])
+            
+            -- for each state s, generate a list of propositions
+            generateValuation s = do
+                props <- listOf (choose (1,5))
+                return (s, nub props)
+        
+
 
 \end{code}
