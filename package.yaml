@@ -37,3 +37,11 @@ tests:
       - report
       - QuickCheck
       - hspec
+
+  quickcheck-logic:     
+    main:                quickcheck.lhs
+    source-dirs:         test
+    dependencies:
+      - report
+      - hspec
+      - QuickCheck
