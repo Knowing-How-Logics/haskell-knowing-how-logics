@@ -1,5 +1,3 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE InstanceSigs #-}
 \section{Language Knowing How}\label{sec:KnowingHow}
 
 In this section we model the language of Knowing How $L_{KH}$ as by the definition of Y. Wang (2015). 
@@ -12,7 +10,7 @@ The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=
 module KnowingHow where
 
 import Data.List (nub, delete)
-import Data.List.NonEmpty (NonEmpty(..)) -- import NoneEmpty including its constructor :|
+import Data.List.NonEmpty (NonEmpty(..), toList) -- import NoneEmpty including its constructor :|
 import Test.QuickCheck
 
 type Proposition = Int
@@ -97,8 +95,27 @@ stronglyExecutableAt rs u (a:sigma) =
     let next = image (r_a rs a) u
     in  not (null next) &&
         all (\v -> stronglyExecutableAt rs v sigma) next
-\end{code}
 
+statesSatisifying :: AbilityMap -> Form -> [State]
+statesSatisifying m f = [s | s <- toList (states m), isTrue (m, s) f]
+
+findPlans :: AbilityMap -> [Plan]
+findPlans m = nub (concatMap (plansFrom depth) (toList (states m)))
+  where
+    -- For now we limit the depth to avoid infinite loops.
+    depth = 5
+
+    -- Flatten transitions
+    edges :: [(Action,(State,State))]
+    edges = [ (a,(u,v))| (a,rel) <- transitions m, (u,v) <- rel ]
+
+    -- Generate all plans from a given state up to our specified depth
+    plansFrom :: Int -> State -> [Plan]
+    plansFrom 0 _ = []
+    plansFrom d s = 
+        [ [a] | (a,(x,_)) <- edges, x == s ] -- single action plans
+        ++ [ a:p | (a,(x,y)) <- edges, x == s, p <- plansFrom (d-1) y ]
+\end{code}
 
 The satisfaction relation $\models$ defines when a formula $\varphi$ is true in a given state $w$ of an ability map $\mathcal{M}$.
 According to the current task requirements, the semantics for the $Kh$ operator are left undefined.
@@ -106,15 +123,23 @@ According to the current task requirements, the semantics for the $Kh$ operator 
 \begin{code}
 -- The satisfaction relation: defines the truth of a formula at a given state
 isTrue :: (AbilityMap, State) -> Form -> Bool
-
 isTrue _ T = True
-isTrue (m, w) (P p) =
-  case lookup w (valuation m) of
+isTrue (m, s) (P p) =
+  case lookup s (valuation m) of
     Just props -> p `elem` props
     Nothing -> False
-isTrue (m, w) (Neg f) = not (isTrue (m, w) f)
-isTrue (m, w) (Conj f1 f2) = isTrue (m, w) f1 && isTrue (m, w) f2
-isTrue (m, w) (KH f1 f2) = undefined
+isTrue (m, s) (Neg f) = not (isTrue (m, s) f)
+isTrue (m, s) (Conj f g) = isTrue (m, s) f && isTrue (m, s) g
+-- KH is NOT local; its truth does not depend on the state at which it is evaluated. 
+-- KH either holds at all states, or none of them. 
+isTrue (m, _) (KH f g) = any (\a -> all (\s -> 
+                stronglyExecutableAt rs s a && all (\t -> isTrue (m,t) g) (executePlan rs s a)
+            ) statesF
+    ) candidatePlans
+  where
+    rs = transitions m
+    statesF = statesSatisifying m f
+    candidatePlans = findPlans m
 
 -- Infix alias for the satisfaction relation
 (|=) :: (AbilityMap, State) -> Form -> Bool
