@@ -1,17 +1,19 @@
 \section{Language Knowing How}\label{sec:KnowingHow}
 
-In this section we model the language of Knowing How $L_{KH}$ as by the definition of Y. Wang (2015). 
+In this section we model the language of Knowing How $L_{KH}$ as by the definition of Y. Wang \cite{Wang2015}. 
 
 Given a set of proposition letters $P$, the language $L_{KH}$ is defined as follows 
 s.t. $Kh(\psi,\varphi)$ is the modality expressing "the agent knows how to achieve $\varphi$ given $\psi$". 
-The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=Kh(\lnot\varphi, \bot)$ have been left out for simplicity.
+The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=Kh(\lnot\varphi, \bot)$ have been left out for simplicity. 
 
 \begin{code}
 module KnowingHow where
 
 import Data.List (nub, delete)
-import Data.List.NonEmpty (NonEmpty(..), toList) -- import NoneEmpty including its constructor :|
+-- import NoneEmpty including its constructor :|
+import Data.List.NonEmpty (NonEmpty(..), toList)
 import Test.QuickCheck
+import GHC.Conc (par)
 
 type Proposition = Int
 
@@ -23,7 +25,10 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 Instead of a Kripke semantics, the Logic opts for a labelled transition system (LTS) $(\mathcal{S}, \mathcal{R}, \mathcal{V})$ s.t.
 $\mathcal{S}$ is a non-empty set of states, 
 $\mathcal{R}:\Sigma\to 2^{\mathcal{S}\times\mathcal{S}}$ is a collection of transitions labelled by actions in $\Sigma$,
-and $\mathcal{V}: \mathcal{S} \to 2^P$ is a valuation function. In the literature by Y. Wang the LTS is called an ability map.
+and $\mathcal{V}: \mathcal{S} \to 2^P$ is a valuation function. In the literature by Y. Wang the LTS is called an ability map. \par
+
+When creating a LTS, consider that states :: NonEmpty State, and therefore must use the :| constructor, i.e. (n :| [n+1..]). 
+For more information see NonEmpty on Hoogle.
 
 \begin{code}
 type Action = Integer
@@ -32,7 +37,7 @@ type State = Int
 type Valuation = [(State, [Proposition])]
 
 data AbilityMap = LTS {
-    states :: NonEmpty State, -- NonEmpty must use the :| constructor, i.e. (n :| [n+1..])
+    states :: NonEmpty State,
     transitions :: Relations,
     valuation :: Valuation
 } deriving(Show)
@@ -95,10 +100,17 @@ stronglyExecutableAt rs u (a:sigma) =
     let next = image (r_a rs a) u
     in  not (null next) &&
         all (\v -> stronglyExecutableAt rs v sigma) next
+\end{code}
 
+The satisfaction relation $\models$ defines when a formula $\varphi$ is true in a given state $s$ of an ability map $\mathcal{M}$.
+Before specifying the semantics, we first introduce two helper functions for the semantics of the $Kh$ operator.
+
+\begin{code}
+-- Given an LST and formula, returns the states that satify said formula
 statesSatisifying :: AbilityMap -> Form -> [State]
 statesSatisifying m f = [s | s <- toList (states m), isTrue (m, s) f]
 
+-- Given an LST, find all plans.
 findPlans :: AbilityMap -> [Plan]
 findPlans m = nub (concatMap (plansFrom depth) (toList (states m)))
   where
@@ -115,13 +127,7 @@ findPlans m = nub (concatMap (plansFrom depth) (toList (states m)))
     plansFrom d s = 
         [ [a] | (a,(x,_)) <- edges, x == s ] -- single action plans
         ++ [ a:p | (a,(x,y)) <- edges, x == s, p <- plansFrom (d-1) y ]
-\end{code}
 
-The satisfaction relation $\models$ defines when a formula $\varphi$ is true in a given state $w$ of an ability map $\mathcal{M}$.
-According to the current task requirements, the semantics for the $Kh$ operator are left undefined.
-
-\begin{code}
--- The satisfaction relation: defines the truth of a formula at a given state
 isTrue :: (AbilityMap, State) -> Form -> Bool
 isTrue _ T = True
 isTrue (m, s) (P p) =
@@ -132,9 +138,12 @@ isTrue (m, s) (Neg f) = not (isTrue (m, s) f)
 isTrue (m, s) (Conj f g) = isTrue (m, s) f && isTrue (m, s) g
 -- KH is NOT local; its truth does not depend on the state at which it is evaluated. 
 -- KH either holds at all states, or none of them. 
-isTrue (m, _) (KH f g) = any (\a -> all (\s -> 
-                stronglyExecutableAt rs s a && all (\t -> isTrue (m,t) g) (executePlan rs s a)
-            ) statesF
+isTrue (m, _) (KH f g) = 
+    any (\a -> 
+        all (\s -> 
+            stronglyExecutableAt rs s a 
+            && all (\t -> isTrue (m,t) g) (executePlan rs s a)
+        ) statesF
     ) candidatePlans
   where
     rs = transitions m
