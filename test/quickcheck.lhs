@@ -1,4 +1,4 @@
-\section{Tests for Boolen semantics}
+\section{Tests for Semantics}
 \label{sec:booltests}
 We now use the library QuickCheck to randomly generate models and states to verify
 the fundamental logical facts within the boolean fragment of our implementation.
