@@ -13,7 +13,6 @@ import Data.List (nub, delete)
 -- import NoneEmpty including its constructor :|
 import Data.List.NonEmpty (NonEmpty(..), toList)
 import Test.QuickCheck
-import GHC.Conc (par)
 
 type Proposition = Int
 
@@ -198,6 +197,27 @@ instance Arbitrary AbilityMap where
                 props <- listOf (choose (1,5))
                 return (s, nub props)
         
-
-
 \end{code}
+
+For now, we haven't had time yet to implement any 'interactive' elements. But it is possible to try out semantics using the definitions by running \texttt{stack ghci}.
+For example:
+
+\begin{verbatim}
+ghci> import Test.QuickCheck
+ghci> import Data.List.NonEmpty (NonEmpty(..), toList)
+
+ghci> generate (arbitrary:: Gen AbilityMap)
+LTS {
+    states = 1 :| [2,3,4,5,6], 
+    transitions = [(3,[(5,2)]),(4,[(2,4)]),(1,[(5,4)])], 
+    valuation = [(1,[4,2]),(2,[]),(3,[1]),(4,[3]),(5,[4]),(6,[])]
+    }
+
+ghci> m = ...
+
+ghci> isTrue (m, 2::State) (KH (Conj (P 4) (Neg (P 2))) (P 3))
+True
+
+ghci> isTrue (m, 2::State) (KH (P 4) (P 1))
+False
+\end{verbatim}
