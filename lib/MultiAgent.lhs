@@ -80,3 +80,16 @@ se_pi :: [State] -> Relations -> PlanSet -> [State]
 se_pi sts rs plans =
     [u | u <- sts, all (\sigma -> stronglyExecutableAt rs u sigma) plans]
 \end{code}
+
+\begin{code}
+type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
+
+data RegLTSU = RegLTSU{ 
+        statesM :: [State],
+        relationsM :: Relations,
+        uncertainty :: Uncertainty,
+        valuationM :: Valuation -- use the Valuation from singleAgent
+    } deriving (Eq, Show, Ord)
+
+-- TODO: Shall we write a checker to check A_i's are indeed automata. Namely, are the language of them really pairwise disjoint? Or simply leave it as an assumption?
+\end{code}
