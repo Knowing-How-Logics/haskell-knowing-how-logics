@@ -21,15 +21,19 @@ data RegForm = P Proposition | Neg RegForm | Conj RegForm RegForm | KH Agent Reg
 
 \end{code}
 
-Now we define \texttt{Automaton}, which we will later use in our new extended version of \texttt{LTS}. 
-An automaton is a tuple $\mathcal{A} = (Q, Act, \delta, I, F)$, where
+Now we define the automaton used in the model-checking procedure.
+This is a non-deterministic automaton of the form
+\[
+\mathcal{A} = (Q, Act, \delta, I, F),
+\]
+where, in our setting:
 
 \begin{itemize}
-    \item $Q$ is a set of automaton states. In principle, this should be distinguished from the states of LTS. But in the model checking algorithm, $Q$ is equal to the set of states in LTS.
-    \item $Act$ is a set of actions, previously descriped as $\Sigma$
-    \item $\delta$ takes a state and an action, then returns a set of successor states
-    \item $I$ is the singleton containing the initial state
-    \item $F$ is the singleton containing the final state
+    \item $Q = S$, i.e. the automaton states coincide with the states of the LTS;
+    \item $Act$ is the set of actions;
+    \item $\delta$ is represented as a transition relation, or equivalently as a mapping from a state-action pair to a set of successor states;
+    \item $I$ is the singleton containing the initial state;
+    \item $F$ is the singleton containing the final state.
 \end{itemize}
 
 Note that since the automaton here refers to a non-deterministic automaton, the transition is modeled as a relation and not a function.
@@ -44,10 +48,10 @@ type ActionAtState = (State, Action)
 
 data Automaton = ATMN {
     states :: [State],
-    actions:: [Action],
+    actions :: [Action],
     transitions :: [(ActionAtState, Successors)],
-    innitial :: State,
+    initial :: State,
     final :: State
-}
+} deriving (Eq, Show, Ord)
 
 \end{code}
