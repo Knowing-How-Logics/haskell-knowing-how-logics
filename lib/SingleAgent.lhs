@@ -22,9 +22,14 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 \end{code}
 
 Instead of a Kripke semantics, the Logic opts for a labelled transition system (LTS) $(\mathcal{S}, \mathcal{R}, \mathcal{V})$ s.t.
-$\mathcal{S}$ is a non-empty set of states, 
-$\mathcal{R}:\Sigma\to 2^{\mathcal{S}\times\mathcal{S}}$ is a collection of transitions labelled by actions in $\Sigma$,
-and $\mathcal{V}: \mathcal{S} \to 2^P$ is a valuation function. In the literature by Y. Wang the LTS is called an ability map. \par
+\begin{itemize}
+    \item $\mathcal{S}$ is a non-empty set of states
+    \item $\mathcal{R}:\Sigma\to 2^{\mathcal{S}\times\mathcal{S}}$ is a collection of transitions labelled by actions in $\Sigma$
+    \item $\mathcal{V}: \mathcal{S} \to 2^P$ is a valuation function
+\end{itemize}
+
+Additionally $s \xrightarrow{a} t$ if $(s,t)\in R(a)$, being the relation or `transition' from $s$ to $t$. This is further modelled after this code snippet.  
+In the literature by Y. Wang the LTS is called an ability map. \par
 
 When creating a LTS, consider that states :: NonEmpty State, and therefore must use the :| constructor, i.e. (n :| [n+1..]). 
 For more information see NonEmpty on Hoogle.
@@ -199,7 +204,7 @@ instance Arbitrary AbilityMap where
         
 \end{code}
 
-For now, we haven't had time yet to implement any 'interactive' elements. But it is possible to try out semantics using the definitions by running \texttt{stack ghci}.
+For now, we haven't had time yet to implement any `interactive' elements. But it is possible to try out semantics using the definitions by running \texttt{stack ghci}.
 For example:
 
 \begin{verbatim}
