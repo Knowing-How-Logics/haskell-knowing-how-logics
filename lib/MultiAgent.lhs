@@ -11,9 +11,18 @@ s.t. $Kh_i (\psi,\varphi)$ is the modality expressing "when $\psi$ is the case, 
 
 \begin{code}
 module MultiAgent where
-
 import SingleAgent
-  (Proposition, Action, Plan, State, Valuation, Relations, executePlan, stronglyExecutableAt)
+  ( Proposition
+  , Action
+  , Plan
+  , State
+  , Valuation
+  , Relations
+  , executePlan
+  , stronglyExecutableAt
+  , image
+  , r_a
+  )
 import GHC.Integer (bitInteger)
 import Data.List (nub)
 
@@ -116,4 +125,51 @@ isTrueReg (_, _) (KH _ _ _) = undefined
 -- [[phi]]= set of states that phi holds
 truthSet :: RegLTSU -> RegForm -> [State]
 truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
+\end{code}
+
+Now we define the product digraph $G$ used in the model-checking procedure. 
+Given a reg-LTS$^U$ $\mathcal{S}$ and an automaton $\mathcal{A} = (Q, Act, \delta, I, F)$, we construct a digraph $G = (V, E)$ as follows:
+
+\begin{itemize}
+    \item $V = Q \times S$, representing the combined state of the automaton and the underlying transition system;
+    \item $E$ is the set of edges such that $((q, t), (q', t')) \in E$ if and only if there exists an action $a \in Act$ such that:
+    \begin{enumerate}
+        \item $q \xrightarrow{a} q'$ in $\mathcal{A}$;
+        \item $(t, t') \in R_a$.
+    \end{enumerate}
+\end{itemize}
+
+This construction synchronizes transitions of the automaton with transitions in the LTS under the same action, allowing us to track which runs of the automaton are realizable in the model.
+
+\begin{code}
+type GVertex = (State, State) -- (Automaton State, LTS State)
+type GEdge = (GVertex, GVertex)
+
+data Digraph = Digraph {
+    vSet :: [GVertex],
+    eSet :: [GEdge]
+} deriving (Eq, Show, Ord)
+
+-- Helper function to get next automaton states under a given action
+getAutNext :: Automaton -> State -> Action -> [State]
+getAutNext atmn q a = 
+    case lookup (q, a) (transitions atmn) of
+        Just ss -> ss
+        Nothing -> []
+
+-- Helper function to get next LTS states under a given action
+getLtsNext :: RegLTSU -> State -> Action -> [State]
+getLtsNext m t a = image (r_a (relationsM m) a) t
+
+-- Build the product digraph G = (V, E)
+buildDigraph :: RegLTSU -> Automaton -> Digraph
+buildDigraph m atmn = Digraph nodes edges
+  where
+    nodes = [(q, s) | q <- states atmn, s <- statesM m]
+    edges = [ ((q, t), (q', t')) 
+            | (q, t) <- nodes
+            , act    <- actions atmn
+            , q'     <- getAutNext atmn q act
+            , t'     <- getLtsNext m t act
+            ]
 \end{code}
