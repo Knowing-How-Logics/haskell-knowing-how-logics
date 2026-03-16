@@ -13,6 +13,8 @@ s.t. $Kh_i (\psi,\varphi)$ is the modality expressing "when $\psi$ is the case, 
 module MultiAgent where
 
 import SingleAgent
+import GHC.Integer (bitInteger)
+import Data.List (nub)
 
 type Agent = Int
 
@@ -53,5 +55,28 @@ data Automaton = ATMN {
     initial :: State,
     final :: State
 } deriving (Eq, Show, Ord)
+\end{code}
 
+\begin{code}
+type PlanSet = [Plan]
+-- I think this naming style is more readable. Please ignore the linter :)
+--  R_pi (u) = union of R_sigma (u) for all plan sigma.
+r_pi_u :: Relations -> State -> PlanSet -> [State]
+r_pi_u rs u plans =
+    nub (concat [executePlan rs u sigma | sigma <- plans])
+
+-- R_pi(X) = union of R_pi(u) for all u in X
+r_pi_x :: Relations -> [State] -> PlanSet -> [State]
+r_pi_x rs xs plans =
+    nub (concat [r_pi_u rs u plans | u <- xs])
+
+-- SE(sigma) = set of all states that sigma is strongly executable.
+se_sigma :: [State] -> Relations -> Plan -> [State]
+se_sigma sts rs sigma =
+    [u | u <- sts, stronglyExecutableAt rs u sigma]
+
+-- SE(pi) = intersection of SE(sigma) w.r.t. sigma in pi
+se_pi :: [State] -> Relations -> PlanSet -> [State]
+se_pi sts rs plans =
+    [u | u <- sts, all (\sigma -> stronglyExecutableAt rs u sigma) plans]
 \end{code}
