@@ -1,4 +1,4 @@
-\section{Language Reg Knowing How}\label{sec:RegKnowingHow}
+\section{Multi Agent}\label{sec:MultiAgent}
 
 In this section we model the language of Knowing How $reg \;L^U_{KH}$.
 
@@ -6,9 +6,9 @@ Given a set of proposition letters $Prop$ and a set of agents $Agt$, the languag
 $\varphi := p \;|\; \lnot\varphi \;|\; \varphi\land\varphi \;|\; Kh_i (\psi,\varphi) \;|\; T$ s.t. $p \in Prop$ and $i \in Agt$.
 
 \begin{code}
-module RegKnowingHow where
+module MultiAgent where
 
-import KnowingHow
+import SingleAgent
 
 type Agent = Int
 

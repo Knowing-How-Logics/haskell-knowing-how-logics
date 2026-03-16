@@ -1,4 +1,4 @@
-\section{Language Knowing How}\label{sec:KnowingHow}
+\section{Single Agent}\label{sec:SingleAgent}
 
 In this section we model the language of Knowing How $L_{KH}$ as by the definition of Y. Wang \cite{Wang2015}. 
 
@@ -7,7 +7,7 @@ s.t. $Kh(\psi,\varphi)$ is the modality expressing "the agent knows how to achie
 The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=Kh(\lnot\varphi, \bot)$ have been left out for simplicity. 
 
 \begin{code}
-module KnowingHow where
+module SingleAgent where
 
 import Data.List (nub, delete)
 -- import NoneEmpty including its constructor :|

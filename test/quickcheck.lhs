@@ -8,7 +8,7 @@ module Main where
 
 import Test.QuickCheck
 import Data.List.NonEmpty (toList)
-import KnowingHow
+import SingleAgent
 import Test.Hspec
 \end{code}
 
