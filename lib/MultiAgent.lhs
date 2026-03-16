@@ -13,6 +13,7 @@ s.t. $Kh_i (\psi,\varphi)$ is the modality expressing "when $\psi$ is the case, 
 module MultiAgent where
 
 import SingleAgent
+  (Proposition, Action, Plan, State, Valuation, Relations, executePlan, stronglyExecutableAt)
 import GHC.Integer (bitInteger)
 import Data.List (nub)
 
@@ -92,4 +93,27 @@ data RegLTSU = RegLTSU{
     } deriving (Eq, Show, Ord)
 
 -- TODO: Shall we write a checker to check A_i's are indeed automata. Namely, are the language of them really pairwise disjoint? Or simply leave it as an assumption?
+\end{code}
+
+\begin{code}
+-- Satisfaction relation for the propositional fragment
+isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
+isTrueReg _ T = True
+isTrueReg (m, s) (P p) =
+    case lookup s (valuationM m) of
+        Just props -> p `elem` props
+        Nothing -> False
+isTrueReg (m, s) (Neg f) =
+    not (isTrueReg (m, s) f)
+isTrueReg (m, s) (Conj f g) =
+    isTrueReg (m, s) f && isTrueReg (m, s) g
+isTrueReg (_, _) (KH _ _ _) = undefined
+
+-- Infix alias for the satisfaction relation
+(||=) :: (RegLTSU, State) -> RegForm -> Bool
+(||=) = isTrueReg
+
+-- [[phi]]= set of states that phi holds
+truthSet :: RegLTSU -> RegForm -> [State]
+truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 \end{code}
