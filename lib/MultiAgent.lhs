@@ -173,3 +173,50 @@ buildDigraph m atmn = Digraph nodes edges
             , t'     <- getLtsNext m t act
             ]
 \end{code}
+
+
+\begin{code}
+-- Successors of a vertex in the digraph
+successors :: Digraph -> GVertex -> [GVertex]
+successors g v = [v' | (u, v') <- eSet g, u == v]
+ 
+-- DFS reachability: is any vertex in targetSet reachable from start?
+-- The type can be read as: digraph -> start -> targets -> visited_set -> Bool
+dfsReachable :: Digraph -> GVertex -> [GVertex] -> [GVertex] -> Bool
+dfsReachable _ start targetSet _
+    | start `elem` targetSet = True
+dfsReachable _ start _ visited
+    | start `elem` visited = False
+dfsReachable g start targetSet visited =
+    any (\v -> dfsReachable g v targetSet (start : visited)) (successors g start)
+ 
+-- Compute the set of bad vertices in G.
+-- A vertex (q, t) is bad iff there exists an action a such that:
+--   (i)  the automaton has a transition from q under a, and
+--   (ii) the LTS has no successor from t under a.
+badVertices :: RegLTSU -> Automaton -> [GVertex]
+badVertices m atmn =
+    nub [ (q, t)
+        | q <- statesA atmn,
+        t <- statesM m,
+        a <- actionsA atmn,
+        not (null (getAutNext atmn q a)),  --  delta(q,a) != empty
+        null (getLtsNext m t a)            --  R_a(t) == empty
+        ]
+ 
+-- checker whether there is a path from (q0, s) to a bad vertex. 
+-- If so, return True. This means that s not in SE(L(A)).
+-- Else, return False. This means that s in SE(L(A)).
+checkSE :: RegLTSU -> State -> Automaton -> Bool
+checkSE m s atmn =
+    let g     = buildDigraph m atmn -- build digraph g
+        bad   = badVertices m atmn  -- compute bad vertices
+        q0    = initial atmn        
+        start = (q0, s)
+    in  dfsReachable g start bad []
+
+checkCond1 :: RegLTSU -> Automaton -> [State] -> Bool
+checkCond1 m atmn phiStates =
+    all (\s -> not (checkSE m s atmn)) phiStates
+\end{code}
+ 

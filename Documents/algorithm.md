@@ -7,17 +7,17 @@ Here is a DFS algorithm for checking reachability:
 ```
 Driver(G, start, target):
     visited := []
-    return DFS_Reachability(G, start, target, visited)
+    return DFS_Reachability(G, start, targetSet, visited)
 
-DFS_Reachability(G, start, target, visited):
-    if start == target:
+DFS_Reachability(G, start, targetSet, visited):
+    if start in targetSet:
         return True
 
     visited.push(start)
     
     for v in successor(start):
         if v not in visited:
-            if DFS_Reachability(G, v, target, visited) == True:
+            if DFS_Reachability(G, v, targetSet, visited):
                 return True
             
     return False
