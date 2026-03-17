@@ -1,3 +1,4 @@
+{- HLINT ignore "Eta reduce" -}
 \section{Multi Agent}\label{sec:MultiAgent}
 
 In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg \;L^U_{KH}$ \cite{Demri2023}. 
@@ -25,6 +26,7 @@ import SingleAgent
   )
 
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 
 type Agent = Int
 
@@ -69,26 +71,26 @@ data Automaton = ATMN {
 
 \begin{code}
 type PlanSet = [Plan]
--- I think this naming style is more readable. Please ignore the linter :)
---  R_pi (u) = union of R_sigma (u) for all plan sigma.
-r_pi_u :: Relations -> State -> PlanSet -> [State]
-r_pi_u rs u plans =
+
+-- R_pi(u) = union of R_sigma(u) for all sigma in pi
+rPiU :: Relations -> State -> PlanSet -> [State]
+rPiU rs u plans =
     nub (concat [executePlan rs u sigma | sigma <- plans])
 
 -- R_pi(X) = union of R_pi(u) for all u in X
-r_pi_x :: Relations -> [State] -> PlanSet -> [State]
-r_pi_x rs xs plans =
-    nub (concat [r_pi_u rs u plans | u <- xs])
+rPiX :: Relations -> [State] -> PlanSet -> [State]
+rPiX rs xs plans =
+    nub (concat [rPiU rs u plans | u <- xs])
 
--- SE(sigma) = set of all states that sigma is strongly executable.
-se_sigma :: [State] -> Relations -> Plan -> [State]
-se_sigma sts rs sigma =
+-- SE(sigma) = set of all states at which sigma is strongly executable
+seSigma :: [State] -> Relations -> Plan -> [State]
+seSigma sts rs sigma =
     [u | u <- sts, stronglyExecutableAt rs u sigma]
 
--- SE(pi) = intersection of SE(sigma) w.r.t. sigma in pi
-se_pi :: [State] -> Relations -> PlanSet -> [State]
-se_pi sts rs plans =
-    [u | u <- sts, all (\sigma -> stronglyExecutableAt rs u sigma) plans]
+-- SE(pi) = intersection of SE(sigma) for all sigma in pi
+sePi :: [State] -> Relations -> PlanSet -> [State]
+sePi sts rs plans =
+    [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
 
 \begin{code}
@@ -116,7 +118,7 @@ isTrueReg (m, s) (Neg f) =
     not (isTrueReg (m, s) f)
 isTrueReg (m, s) (Conj f g) =
     isTrueReg (m, s) f && isTrueReg (m, s) g
-isTrueReg (_, _) (KH _ _ _) = undefined
+isTrueReg (_, _) (KH {}) = undefined
 
 -- Infix alias for the satisfaction relation
 (||=) :: (RegLTSU, State) -> RegForm -> Bool
@@ -152,10 +154,8 @@ data Digraph = Digraph {
 
 -- Helper function to get next automaton states under a given action
 getAutNext :: Automaton -> State -> Action -> [State]
-getAutNext atmn q a = 
-    case lookup (q, a) (transitionsA atmn) of
-        Just ss -> ss
-        Nothing -> []
+getAutNext atmn q a =
+    fromMaybe [] (lookup (q, a) (transitionsA atmn))
 
 -- Helper function to get next LTS states under a given action
 getLtsNext :: RegLTSU -> State -> Action -> [State]
@@ -172,4 +172,50 @@ buildDigraph m atmn = Digraph nodes edges
             , q'     <- getAutNext atmn q act
             , t'     <- getLtsNext m t act
             ]
+\end{code}
+
+
+\begin{code}
+-- Successors of a vertex in the digraph
+successors :: Digraph -> GVertex -> [GVertex]
+successors g v = [v' | (u, v') <- eSet g, u == v]
+ 
+-- DFS reachability: is any vertex in targetSet reachable from start?
+-- The type can be read as: digraph -> start -> targets -> visited_set -> Bool
+dfsReachable :: Digraph -> GVertex -> [GVertex] -> [GVertex] -> Bool
+dfsReachable _ start targetSet _
+    | start `elem` targetSet = True
+dfsReachable _ start _ visited
+    | start `elem` visited = False
+dfsReachable g start targetSet visited =
+    any (\v -> dfsReachable g v targetSet (start : visited)) (successors g start)
+ 
+-- Compute the set of bad vertices in G.
+-- A vertex (q, t) is bad iff there exists an action a such that:
+--   (i)  the automaton has a transition from q under a, and
+--   (ii) the LTS has no successor from t under a.
+badVertices :: RegLTSU -> Automaton -> [GVertex]
+badVertices m atmn =
+    nub [ (q, t)
+        | q <- statesA atmn,
+        t <- statesM m,
+        a <- actionsA atmn,
+        not (null (getAutNext atmn q a)),  --  delta(q,a) != empty
+        null (getLtsNext m t a)            --  R_a(t) == empty
+        ]
+ 
+-- checker whether there is a path from (q0, s) to a bad vertex. 
+-- If so, return True. This means that s not in SE(L(A)).
+-- Else, return False. This means that s in SE(L(A)).
+checkSE :: RegLTSU -> State -> Automaton -> Bool
+checkSE m s atmn =
+    let g     = buildDigraph m atmn -- build digraph g
+        bad   = badVertices m atmn  -- compute bad vertices
+        q0    = initial atmn        
+        start = (q0, s)
+    in  dfsReachable g start bad []
+
+checkCond1 :: RegLTSU -> Automaton -> [State] -> Bool
+checkCond1 m atmn =
+    all (\s -> not (checkSE m s atmn))
 \end{code}
