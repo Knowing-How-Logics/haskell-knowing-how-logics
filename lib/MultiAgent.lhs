@@ -23,7 +23,7 @@ import SingleAgent
   , image
   , r_a
   )
-import GHC.Integer (bitInteger)
+
 import Data.List (nub)
 
 type Agent = Int
@@ -59,9 +59,9 @@ type Successors = [State]
 type ActionAtState = (State, Action) 
 
 data Automaton = ATMN {
-    states :: [State],
-    actions :: [Action],
-    transitions :: [(ActionAtState, Successors)],
+    statesA :: [State],
+    actionsA :: [Action],
+    transitionsA :: [(ActionAtState, Successors)],
     initial :: State,
     final :: State
 } deriving (Eq, Show, Ord)
@@ -153,7 +153,7 @@ data Digraph = Digraph {
 -- Helper function to get next automaton states under a given action
 getAutNext :: Automaton -> State -> Action -> [State]
 getAutNext atmn q a = 
-    case lookup (q, a) (transitions atmn) of
+    case lookup (q, a) (transitionsA atmn) of
         Just ss -> ss
         Nothing -> []
 
@@ -165,10 +165,10 @@ getLtsNext m t a = image (r_a (relationsM m) a) t
 buildDigraph :: RegLTSU -> Automaton -> Digraph
 buildDigraph m atmn = Digraph nodes edges
   where
-    nodes = [(q, s) | q <- states atmn, s <- statesM m]
+    nodes = [(q, s) | q <- statesA atmn, s <- statesM m]
     edges = [ ((q, t), (q', t')) 
             | (q, t) <- nodes
-            , act    <- actions atmn
+            , act    <- actionsA atmn
             , q'     <- getAutNext atmn q act
             , t'     <- getLtsNext m t act
             ]
