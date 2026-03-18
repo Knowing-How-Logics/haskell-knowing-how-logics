@@ -219,3 +219,55 @@ checkCond1 :: RegLTSU -> Automaton -> [State] -> Bool
 checkCond1 m atmn =
     all (\s -> not (checkSE m s atmn))
 \end{code}
+
+\begin{code}
+-- Construct A_(t1, t2)
+-- This automaton accepts all plans from t1 to t2
+buildPathAutomaton :: RegLTSU -> State -> State -> Automaton
+buildPathAutomaton m t1 t2 = ATMN
+    { statesA      = statesM m,
+    actionsA     = acts,
+    transitionsA = [ ((s, a), getLtsNext m s a) | s <- statesM m, a <- acts],
+    initial      = t1,
+    final        = t2
+    }
+  where
+    -- Collect all actions that appear in the LTS relations
+    acts = nub [a | (a, _) <- relationsM m]
+ 
+-- Check the intersection of L(A1) and L(A2) is empty or not
+intersectionNonEmpty :: Automaton -> Automaton -> Bool
+intersectionNonEmpty a1 a2 =
+    dfsReachable prodGraph startV targets []
+  where
+    -- Shared actions
+    sharedActs = nub [a | a <- actionsA a1, a `elem` actionsA a2]
+ 
+    -- Product graph vertices and edges
+    prodNodes = [(q1, q2) | q1 <- statesA a1, q2 <- statesA a2]
+    prodEdges = [ ((q1, q2), (q1', q2'))
+                | (q1, q2) <- prodNodes,
+                a          <- sharedActs,
+                q1'        <- getAutNext a1 q1 a,
+                q2'        <- getAutNext a2 q2 a
+                ]
+    prodGraph = Digraph prodNodes prodEdges
+ 
+    -- Start from the pair of initial states
+    startV = (initial a1, initial a2)
+ 
+    -- Target: any pair of accepting states
+    targets = [(final a1, final a2)]
+ 
+-- Check for each A: for all (t1,t2): L(A) \cap L(A_(t1, t2)) = empty?
+-- We check the emptiness of the intersection by checking the reachability of the product graph(automaton)
+-- If empty, then cond 2 is SAT
+checkCond2 :: RegLTSU -> Automaton -> [State] -> [State] -> Bool
+checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
+  where
+    pairs = [(t1, t2) | t1 <- phiStates, t2 <- negPsiStates]
+    -- Check the intersection. Non-empty => cond 2 is UNSAT.
+    violates (t1, t2) =
+        let pathAut = buildPathAutomaton m t1 t2
+        in  intersectionNonEmpty aut pathAut
+\end{code}
