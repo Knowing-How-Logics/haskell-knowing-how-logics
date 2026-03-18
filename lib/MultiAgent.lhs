@@ -1,14 +1,16 @@
 {- HLINT ignore "Eta reduce" -}
 \section{Multi Agent}\label{sec:MultiAgent}
 
-In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg \;L^U_{KH}$ \cite{Demri2023}. 
+In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg-\mathcal{L}^U_{KH}$ \cite{Demri2023}. 
 The paper we reference combines and alters already exisiting languages into the one we model here. 
 The first key difference from the previous language being that it moves from single agent to a multi agent language. 
 
 Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \in Prop$ and $i \in Agt$, 
-the language $reg \;L^U_{KH}$ is defined as 
-$\varphi := p \;|\; \lnot\varphi \;|\; \varphi\land\varphi \;|\; Kh_i (\psi,\varphi) \;|\; T$ 
-s.t. $Kh_i (\psi,\varphi)$ is the modality expressing "when $\psi$ is the case, the agent $a$ knows how to make $\varphi$ true". 
+the language $reg-\mathcal{L}^U_{KH}$ is defined as 
+\[
+\varphi := p \;|\; \lnot\varphi \;|\; \varphi\land\varphi \;|\; Kh_i (\psi,\varphi)
+\]
+s.t. $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $a$ knows how to make $\varphi$ true". \\
 
 \begin{code}
 module MultiAgent where
@@ -30,31 +32,22 @@ import Data.Maybe (fromMaybe)
 
 type Agent = Int
 
-data RegForm = P Proposition | Neg RegForm | Conj RegForm RegForm | KH Agent RegForm RegForm | T
+data RegForm = P Proposition | Neg RegForm | Conj RegForm RegForm | KH Agent RegForm RegForm
     deriving (Eq, Show, Ord)
 
 \end{code}
 
 Now we define the automaton used in the model-checking procedure.
-This is a non-deterministic automaton of the form
-\[
-\mathcal{A} = (Q, Act, \delta, I, F),
-\]
-where, in our setting:
-
+Formally, a non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act, \delta, I, F)$, where:
 \begin{itemize}
-    \item $Q = S$, i.e. the automaton states coincide with the states of the LTS;
-    \item $Act$ is the set of actions;
-    \item $\delta$ is represented as a transition relation, or equivalently as a mapping from a state-action pair to a set of successor states;
-    \item $I$ is the singleton containing the initial state;
-    \item $F$ is the singleton containing the final state.
+    \item $Q$ is a finite set of states,
+    \item $Act$ is a finite alphabet of actions,
+    \item $\delta \subseteq Q \times Act \times Q$ is the transition relation,
+    \item $I \subseteq Q$ is the set of initial states,
+    \item $F \subseteq Q$ is the set of accepting (final) states.
 \end{itemize}
 
-Note that since the automaton here refers to a non-deterministic automaton, the transition is modeled as a relation and not a function.
-Moreover, $\forall t, t'\in Q$ and $a\in Act$ we have that $t \xrightarrow{a} t' \in \delta \Leftrightarrow (t, t') \in R_a$ (as previously defined for single agent).
-
-Since both $I$ and $F$ are singletons we define both as a \texttt{State}, 
-rather than a \texttt{[State]}, to avoid unintended behaviour. 
+Note that since the automaton here refers to a non-deterministic automaton, the transition is modeled as a relation and not a function. Moreover, $\forall t, t'\in Q$ and $a\in Act$ we have that $t \xrightarrow{a} t' \in \delta \Leftrightarrow (t, t') \in R_a$ (as previously defined for single agent).\\
 
 \begin{code}
 type Successors = [State]
@@ -64,10 +57,14 @@ data Automaton = ATMN {
     statesA :: [State],
     actionsA :: [Action],
     transitionsA :: [(ActionAtState, Successors)],
-    initial :: State,
-    final :: State
+    initial :: [State],
+    final :: [State]
 } deriving (Eq, Show, Ord)
 \end{code}
+
+For $\pi\subseteq Act^{*}$, $u\in W$ and $U\subseteq W$, define:
+\[R_{\pi} \,:=\,\bigcup_{\sigma\in \pi}R_{\sigma}, \qquad R_{\pi}(u) \,:=\,\bigcup_{\sigma\in \pi}R_{\sigma}(u), \qquad R_{\pi}(U) \,:=\,\bigcup_{u\in U}R_{\pi}(u)\]
+A set of plans $\pi\subseteq Act^{*}$ is \textit{strongly executable} at $u\in W$ iff every plan $\sigma \in \pi$ is strongly executable at $u$. This gives rise to the definition $SE(\pi)\, :=\,\bigcap_{\sigma\in\pi}SE(\sigma)$, collecting all states where every plan in $\pi$ is strongly executable.\\
 
 \begin{code}
 type PlanSet = [Plan]
@@ -92,6 +89,12 @@ sePi :: [State] -> Relations -> PlanSet -> [State]
 sePi sts rs plans =
     [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
+
+The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper.\par
+
+Each agent has sets of indistinguishable plans, forming equivalence classes. Since plans are finite sequences of actions, they can be viewed as strings over $Act$. From this perspective, each equivalence class can be represented as the language of a finite automaton $\mathcal{A}$, and a witness for $Kh_i$ is a string in $L(\mathcal{A})$.\par
+
+A reg-LTS$^U$ is a tuple $\mathcal{M}=(W, (R_a)_{a\in Act}, (U_i)_{i\in Agt}, V)$, where the elements of $U_i$ associated to an agent $i$, are \textit{finite automata}, namely, $\emptyset \not = U_i = \{\mathcal{A}_1, \mathcal{A}_2...\}$. $L(\mathcal{A}_i)$ denotes the language accepted by $\mathcal{A}_i$. For every $\mathcal{A}_m, \mathcal{A}_n\in U_i$, s.t. $m\not = n$, then  $L(\mathcal{A}_m)\cap L(\mathcal{A}_n)=\emptyset$.\\
 
 \begin{code}
 type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
@@ -124,7 +127,7 @@ Given a reg-LTS$^U$ $\mathcal{S}$ and an automaton $\mathcal{A} = (Q, Act, \delt
     \end{enumerate}
 \end{itemize}
 
-This construction synchronizes transitions of the automaton with transitions in the LTS under the same action, allowing us to track which runs of the automaton are realizable in the model.
+This construction synchronizes transitions of the automaton with transitions in the LTS under the same action, allowing us to track which runs of the automaton are realizable in the model.\\
 
 \begin{code}
 type GVertex = (State, State) -- (Automaton State, LTS State)
@@ -192,11 +195,9 @@ badVertices m atmn =
 -- Else, return False. This means that s in SE(L(A)).
 checkSE :: RegLTSU -> State -> Automaton -> Bool
 checkSE m s atmn =
-    let g     = buildDigraph m atmn -- build digraph g
-        bad   = badVertices m atmn  -- compute bad vertices
-        q0    = initial atmn        
-        start = (q0, s)
-    in  dfsReachable g start bad []
+    let g   = buildDigraph m atmn
+        bad = badVertices m atmn
+    in  any (\q0 -> dfsReachable g (q0, s) bad []) (initial atmn)
 
 checkCond1 :: RegLTSU -> Automaton -> [State] -> Bool
 checkCond1 m atmn =
@@ -211,8 +212,8 @@ buildPathAutomaton m t1 t2 = ATMN
     { statesA      = statesM m,
     actionsA     = acts,
     transitionsA = [ ((s, a), getLtsNext m s a) | s <- statesM m, a <- acts],
-    initial      = t1,
-    final        = t2
+    initial      = [t1],
+    final        = [t2]
     }
   where
     -- Collect all actions that appear in the LTS relations
@@ -221,11 +222,11 @@ buildPathAutomaton m t1 t2 = ATMN
 -- Check the intersection of L(A1) and L(A2) is empty or not
 intersectionNonEmpty :: Automaton -> Automaton -> Bool
 intersectionNonEmpty a1 a2 =
-    dfsReachable prodGraph startV targets []
+    any (\sv -> dfsReachable prodGraph sv targets []) startVs
   where
     -- Shared actions
     sharedActs = nub [a | a <- actionsA a1, a `elem` actionsA a2]
- 
+
     -- Product graph vertices and edges
     prodNodes = [(q1, q2) | q1 <- statesA a1, q2 <- statesA a2]
     prodEdges = [ ((q1, q2), (q1', q2'))
@@ -235,12 +236,12 @@ intersectionNonEmpty a1 a2 =
                 q2'        <- getAutNext a2 q2 a
                 ]
     prodGraph = Digraph prodNodes prodEdges
- 
-    -- Start from the pair of initial states
-    startV = (initial a1, initial a2)
- 
+
+    -- Start from any pair of initial states
+    startVs = [(q1, q2) | q1 <- initial a1, q2 <- initial a2]
+
     -- Target: any pair of accepting states
-    targets = [(final a1, final a2)]
+    targets = [(q1, q2) | q1 <- final a1, q2 <- final a2]
  
 -- Check for each A: for all (t1,t2): L(A) \cap L(A_(t1, t2)) = empty?
 -- We check the emptiness of the intersection by checking the reachability of the product graph(automaton)
@@ -262,7 +263,6 @@ truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 
 -- Satisfaction relation for the propositional fragment
 isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
-isTrueReg _ T = True
 isTrueReg (m, s) (P p) =
     case lookup s (valuationM m) of
         Just props -> p `elem` props
