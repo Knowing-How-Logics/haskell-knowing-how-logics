@@ -2,16 +2,25 @@
 \section{Multi Agent}\label{sec:MultiAgent}
 
 In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg-\mathcal{L}^U_{KH}$ \cite{Demri2023}. 
-The paper we reference combines and alters already exisiting languages into the one we model here. 
-The first key difference from the previous language being that it moves from single agent to a multi agent language. 
+The paper we reference combines and alters already existing languages into the one we model here. 
+The first key difference from the previous language is that it moves from a single-agent language to a multi-agent one. 
 
 Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \in Prop$ and $i \in Agt$, 
 the language $reg-\mathcal{L}^U_{KH}$ is defined as 
 \[
-\varphi := p \;|\; \lnot\varphi \;|\; \varphi\land\varphi \;|\; Kh_i (\psi,\varphi)
+\varphi := p \;|\; \lnot\varphi \;|\; \varphi\lor\varphi \;|\; Kh_i (\psi,\varphi)
 \]
-s.t. $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $a$ knows how to make $\varphi$ true". \\
+s.t. $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true".\par
+The semantics of this language is defined as follows.
+Let $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$ be a finite reg-LTS$^U$, and $s \in S$. The satisfaction relation $\models$ is defined as:
 
+\begin{tabularx}{\textwidth}{lclX} 
+$\mathcal{S}, s \models p$ & \textit{iff} & & $p \in V(s)$ \\
+$\mathcal{S}, s \models \neg \varphi$ & \textit{iff} & & $\mathcal{S}, s \not\models \varphi$ \\
+$\mathcal{S}, w \models \psi \vee \varphi$ & \textit{iff} & & $\mathcal{S}, w \models \psi \text{ or } \mathcal{S}, w \models \varphi$ \\
+$\mathcal{S}, s \models Kh_i(\psi, \varphi)$ & \textit{iff} & & there is a finite automaton $\mathcal{A}\in U_i$, such that (1) $[\![\psi]\!]^{\mathcal{S}}\subseteq SE(L(\mathcal{A}))$ and (2) for every $t\in [\![\psi]\!]^\mathcal{S}$, $R_{L(\mathcal{A})}(t) \subseteq [\![\varphi]\!]^\mathcal{S}$,\\
+\end{tabularx}
+where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, w \models \psi\}$ is the set of all states satisfying $\psi$.
 \begin{code}
 module MultiAgent where
 import SingleAgent
@@ -32,7 +41,7 @@ import Data.Maybe (fromMaybe)
 
 type Agent = Int
 
-data RegForm = P Proposition | Neg RegForm | Conj RegForm RegForm | KH Agent RegForm RegForm
+data RegForm = P Proposition | Neg RegForm | Disj RegForm RegForm | KH Agent RegForm RegForm
     deriving (Eq, Show, Ord)
 
 \end{code}
@@ -47,8 +56,11 @@ Formally, a non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act
     \item $F \subseteq Q$ is the set of accepting (final) states.
 \end{itemize}
 
-Note that since the automaton here refers to a non-deterministic automaton, the transition is modeled as a relation and not a function. Moreover, $\forall t, t'\in Q$ and $a\in Act$ we have that $t \xrightarrow{a} t' \in \delta \Leftrightarrow (t, t') \in R_a$ (as previously defined for single agent).\\
-
+Since the automaton considered here is non-deterministic, its transition component is modeled as a relation rather than as a function. 
+For the special automaton $\mathcal{A}_{(t_1,t_2)}$ used later in Condition (2), we define its transitions by mirroring the LTS relations: for all $t,t' \in Q$ and $a \in Act$,
+\[
+t \xrightarrow{a} t' \in \delta \iff (t,t') \in R_a.
+\]
 \begin{code}
 type Successors = [State]
 type ActionAtState = (State, Action) 
@@ -90,11 +102,11 @@ sePi sts rs plans =
     [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
 
-The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper.\par
+In terms of automata, $\mathrm{SE}(L(\mathcal{A})) := \bigcap_{\sigma \in L(\mathcal{A})} \mathrm{SE}(\sigma)$ collects all states at which every plan in $L(\mathcal{A})$ is strongly executable, and $R_{L(\mathcal{A})} := \bigcup_{\sigma \in L(\mathcal{A})} R_{\sigma}$ collects all transitions realisable by some plan in $L(\mathcal{A})$. The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper.\par
 
 Each agent has sets of indistinguishable plans, forming equivalence classes. Since plans are finite sequences of actions, they can be viewed as strings over $Act$. From this perspective, each equivalence class can be represented as the language of a finite automaton $\mathcal{A}$, and a witness for $Kh_i$ is a string in $L(\mathcal{A})$.\par
 
-A reg-LTS$^U$ is a tuple $\mathcal{M}=(W, (R_a)_{a\in Act}, (U_i)_{i\in Agt}, V)$, where the elements of $U_i$ associated to an agent $i$, are \textit{finite automata}, namely, $\emptyset \not = U_i = \{\mathcal{A}_1, \mathcal{A}_2...\}$. $L(\mathcal{A}_i)$ denotes the language accepted by $\mathcal{A}_i$. For every $\mathcal{A}_m, \mathcal{A}_n\in U_i$, s.t. $m\not = n$, then  $L(\mathcal{A}_m)\cap L(\mathcal{A}_n)=\emptyset$.\\
+A reg-LTS$^U$ is a tuple $\mathcal{S}=(S, (R_a)_{a\in Act}, (U_i)_{i\in Agt}, V)$, where the elements of $U_i$ associated with an agent $i$ are \textit{finite automata}, namely, $\emptyset \neq U_i = \{\mathcal{A}_1, \mathcal{A}_2, \ldots\}$. Here, $L(\mathcal{A}_i)$ denotes the language accepted by $\mathcal{A}_i$. For every $\mathcal{A}_m, \mathcal{A}_n \in U_i$ such that $m \neq n$, we have $L(\mathcal{A}_m)\cap L(\mathcal{A}_n)=\emptyset$.\\
 
 \begin{code}
 type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
@@ -113,13 +125,11 @@ getAgentAuts m agent =
 
 -- TODO: Shall we write a checker to check A_i's are indeed automata. Namely, are the language of them really pairwise disjoint? Or simply leave it as an assumption?
 \end{code}
-
-
 Now we define the product digraph $G$ used in the model-checking procedure. 
 Given a reg-LTS$^U$ $\mathcal{S}$ and an automaton $\mathcal{A} = (Q, Act, \delta, I, F)$, we construct a digraph $G = (V, E)$ as follows:
 
 \begin{itemize}
-    \item $V = Q \times S$, representing the combined state of the automaton and the underlying transition system;
+    \item $V = Q \times S$, representing the combined states of the automaton and the underlying transition system;
     \item $E$ is the set of edges such that $((q, t), (q', t')) \in E$ if and only if there exists an action $a \in Act$ such that:
     \begin{enumerate}
         \item $q \xrightarrow{a} q'$ in $\mathcal{A}$;
@@ -160,7 +170,37 @@ buildDigraph m atmn = Digraph nodes edges
             ]
 \end{code}
 
-
+Given a finite reg-LTS$^U$ $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$, 
+a state $s \in S$, and a formula $Kh_a(\varphi, \psi)$, 
+we check whether $\mathcal{S}, s \models Kh_a(\varphi, \psi)$ by iterating over 
+all automata $\mathcal{A} \in U_a$ and verifying two conditions:
+\begin{enumerate}
+    \item $\llbracket\varphi\rrbracket^{\mathcal{S}} \subseteq \mathrm{SE}(L(\mathcal{A}))$
+    \item $R_{L(\mathcal{A})}(\llbracket\varphi\rrbracket^{\mathcal{S}}) \subseteq \llbracket\psi\rrbracket^{\mathcal{S}}$
+\end{enumerate}
+where $\llbracket\varphi\rrbracket^{\mathcal{S}}$ is the set of states in $\mathcal{S}$ at which $\varphi$ holds.
+Since $L(\mathcal{A})$ may be infinite, directly enumerating all plans is not feasible. 
+Following \cite{Demri2023}, we handle each condition via a separate algorithm, 
+both of which reduce the problem to reachability checks on finite graphs.\par
+To perform the reachability checks in PTIME, we use the following \textit{depth-first search} algorithm:\\
+{\small
+\begin{algorithmic}[1]
+\Require Digraph $G=(V,E)$, start vertex $v_0$, target set $T_0 \subseteq V$
+\State $v \gets v_0$
+\State $T \gets T_0$
+\State $visited \gets \emptyset$
+\Function{DFS}{$G, v, T, visited$}
+    \If{$v \in T$} \Return \textbf{true} \EndIf
+    \If{$v \in visited$} \Return \textbf{false} \EndIf
+    \State $visited \gets visited \cup \{v\}$
+    \For{$w \in \mathrm{successors}(G, v)$}
+        \If{\Call{DFS}{$G, w, T, visited$}} \Return \textbf{true} \EndIf
+    \EndFor
+    \State \Return \textbf{false}
+\EndFunction
+\end{algorithmic}
+}
+In Haskell:\\
 \begin{code}
 -- Successors of a vertex in the digraph
 successors :: Digraph -> GVertex -> [GVertex]
@@ -175,7 +215,63 @@ dfsReachable _ start _ visited
     | start `elem` visited = False
 dfsReachable g start targetSet visited =
     any (\v -> dfsReachable g v targetSet (start : visited)) (successors g start)
- 
+\end{code}
+
+The algorithm that checks Condition (1) from \cite{Demri2023} works as follows:
+{\small
+\begin{algorithmic}[1]
+\Require reg-LTS$^U$ $\mathcal{S}$, state $s \in S$, automaton $\mathcal{A} = (Q, Act, \delta, I, F)$
+\Function{CheckSE-Original}{$\mathcal{S}, s, \mathcal{A}$}
+    \State Build the product digraph $G = (Q \times S,\; E)$
+    \For{$a \in Act$}
+        \For{$t \in S$ such that $R_a(t) = \emptyset$}
+            \For{$q \in Q$ such that $\delta(q, a) \neq \emptyset$}
+                \For{$q_0 \in I$}
+                    \If{$(q, t)$ is reachable from $(q_0, s)$ in $G$}
+                        \State \Return \textbf{true}
+                    \EndIf
+                \EndFor
+            \EndFor
+        \EndFor
+    \EndFor
+    \State \Return \textbf{false}
+\EndFunction
+\end{algorithmic}
+}
+Instead of using the nested for-loops, we first collect all \emph{bad vertices} via set comprehension, i.e.\ 
+\[
+Bad = \{(q,t) \in Q \times S \mid \exists\, a \in Act : \delta(q,a) \neq \emptyset \;\text{and}\; R_a(t) = \emptyset\},
+\]
+and then perform a single DFS reachability check from each initial vertex $(q_0, s)$ to the set $Bad$. This is equivalent to the original procedure, but avoids repeated reachability checks.\par
+A bad vertex $(q, t)$ represents a situation where the automaton expects to perform some action $a$ at state $q$, but the LTS cannot execute $a$ at state $t$. If such a vertex is reachable, it means that some plan in $L(\mathcal{A})$ fails to be strongly executable.\par
+\textit{Remark: This function might be more accurately called \texttt{checkNotSE} rather than \texttt{checkSE}, since it returns true exactly when strong executability fails.}\\
+{\small
+\begin{algorithmic}[1]
+\Require reg-LTS$^U$ $\mathcal{S} = (S, (R_a), (U_i), V)$, state $s \in S$, automaton $\mathcal{A} = (Q, Act, \delta, I, F)$
+\Function{CheckSE}{$\mathcal{S}, s, \mathcal{A}$}
+    \State Build product digraph $G = (Q \times S,\; E)$
+    \State $Bad \gets \{(q,t) \in V \mid \exists\, a \in Act : \delta(q,a) \neq \emptyset \;\text{and}\; R_a(t) = \emptyset\}$
+    \For{$q_0 \in I$}
+        \If{\Call{DFS}{$(q_0, s)$} with target $Bad$} \Return \textbf{true} \EndIf
+    \EndFor
+    \State \Return \textbf{false}
+\EndFunction
+\end{algorithmic}
+}
+
+{\small
+\begin{algorithmic}[1]
+\Require reg-LTS$^U$ $\mathcal{S}$, automaton $\mathcal{A}$, truth set $\llbracket\varphi\rrbracket^{\mathcal{S}}$
+\Function{CheckCond1}{$\mathcal{S}, \mathcal{A}, \llbracket\varphi\rrbracket^{\mathcal{S}}$}
+    \For{$s \in \llbracket\varphi\rrbracket^{\mathcal{S}}$}
+        \If{\Call{CheckSE}{$\mathcal{S}, s, \mathcal{A}$}} \Return \textbf{false} \EndIf
+    \EndFor
+    \State \Return \textbf{true}
+\EndFunction
+\end{algorithmic}
+}
+In Haskell:\\
+\begin{code}
 -- Compute the set of bad vertices in G.
 -- A vertex (q, t) is bad iff there exists an action a such that:
 --   (i)  the automaton has a transition from q under a, and
@@ -269,8 +365,8 @@ isTrueReg (m, s) (P p) =
         Nothing -> False
 isTrueReg (m, s) (Neg f) =
     not (isTrueReg (m, s) f)
-isTrueReg (m, s) (Conj f g) =
-    isTrueReg (m, s) f && isTrueReg (m, s) g
+isTrueReg (m, s) (Disj f g) =
+    isTrueReg (m, s) f || isTrueReg (m, s) g
 
 -- Kh_a(phi, psi) holds iff there exists A in U_a such that
 -- (1) [[phi]] is subset of SE(L(A))      
