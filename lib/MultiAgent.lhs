@@ -103,31 +103,14 @@ data RegLTSU = RegLTSU{
         valuationM :: Valuation -- use the Valuation from singleAgent
     } deriving (Eq, Show, Ord)
 
+-- Given an agent i, return U_i = [A_1,...]
+getAgentAuts :: RegLTSU -> Agent -> [Automaton]
+getAgentAuts m agent =
+    fromMaybe [] (lookup agent (uncertainty m))
+
 -- TODO: Shall we write a checker to check A_i's are indeed automata. Namely, are the language of them really pairwise disjoint? Or simply leave it as an assumption?
 \end{code}
 
-\begin{code}
--- Satisfaction relation for the propositional fragment
-isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
-isTrueReg _ T = True
-isTrueReg (m, s) (P p) =
-    case lookup s (valuationM m) of
-        Just props -> p `elem` props
-        Nothing -> False
-isTrueReg (m, s) (Neg f) =
-    not (isTrueReg (m, s) f)
-isTrueReg (m, s) (Conj f g) =
-    isTrueReg (m, s) f && isTrueReg (m, s) g
-isTrueReg (_, _) (KH {}) = undefined
-
--- Infix alias for the satisfaction relation
-(||=) :: (RegLTSU, State) -> RegForm -> Bool
-(||=) = isTrueReg
-
--- [[phi]]= set of states that phi holds
-truthSet :: RegLTSU -> RegForm -> [State]
-truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
-\end{code}
 
 Now we define the product digraph $G$ used in the model-checking procedure. 
 Given a reg-LTS$^U$ $\mathcal{S}$ and an automaton $\mathcal{A} = (Q, Act, \delta, I, F)$, we construct a digraph $G = (V, E)$ as follows:
@@ -270,4 +253,37 @@ checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
     violates (t1, t2) =
         let pathAut = buildPathAutomaton m t1 t2
         in  intersectionNonEmpty aut pathAut
+\end{code}
+
+\begin{code}
+-- [[phi]]= set of states that phi holds
+truthSet :: RegLTSU -> RegForm -> [State]
+truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
+
+-- Satisfaction relation for the propositional fragment
+isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
+isTrueReg _ T = True
+isTrueReg (m, s) (P p) =
+    case lookup s (valuationM m) of
+        Just props -> p `elem` props
+        Nothing -> False
+isTrueReg (m, s) (Neg f) =
+    not (isTrueReg (m, s) f)
+isTrueReg (m, s) (Conj f g) =
+    isTrueReg (m, s) f && isTrueReg (m, s) g
+
+-- Kh_a(phi, psi) holds iff there exists A in U_a such that
+-- (1) [[phi]] is subset of SE(L(A))      
+-- (2) R_{L(A)}([[phi]]) is subset of [[psi]]  
+isTrueReg (m, _) (KH agent phi psi) =
+    any (\aut -> checkCond1 m aut phiStates
+              && checkCond2 m aut phiStates negPsiStates
+    ) (getAgentAuts m agent)
+  where
+    phiStates    = truthSet m phi          -- [[phi]]
+    negPsiStates = truthSet m (Neg psi)    -- [[neg psi]]
+
+-- Infix alias for the satisfaction relation
+(||=) :: (RegLTSU, State) -> RegForm -> Bool
+(||=) = isTrueReg
 \end{code}
