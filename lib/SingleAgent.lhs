@@ -1,11 +1,45 @@
-\section{Single Agent}\label{sec:SingleAgent}
+\section{Basic Knowing How Logic $\mathcal{L}_{Kh}$ in Haskell}\label{sec:SingleAgent}
+In this section we model the language of \textit{basic knowing how} $\mathcal{L}_{Kh}$ introduced in \cite{Wang2015}. This logic captures the ability of an agent to achieve a goal $\varphi$ given a precondition $\psi$, by requiring the existence of a plan that is strongly executable and goal-reaching from every state satisfying $\psi$. The underlying models are labelled transition systems, where each relation corresponds to an action the agent can perform.\par
 
-In this section we model the language of Knowing How $L_{KH}$ as by the definition of Y. Wang \cite{Wang2015}. 
+We implement an explicit model-checker for this logic with a bounded plan depth, along with QuickCheck generators for random testing of the semantics.
+\subsection{Preliminaries}
+\begin{definition}(Syntax)
+Given a set of proposition letters $Prop$, the language $\mathcal{L}_{Kh}$ is defined by
+\[
+\varphi\, ::= \top\mid \, p\,|\, \neg \varphi\,|\, \varphi\wedge\varphi \, | \,Kh(\varphi,\varphi), 
+\]
+where $p \in Prop$.
+\end{definition}
 
-Given a set of proposition letters $P$, the language $L_{KH}$ is defined as follows 
-s.t. $Kh(\psi,\varphi)$ is the modality expressing "the agent knows how to achieve $\varphi$ given $\psi$". 
+\begin{definition}[LTS]
+A labelled transition system (LTS) is a tuple $\mathcal{M} = (S, (R_a)_{a \in Act}, V)$, where:
+\begin{itemize}
+    \item $S$ is a non-empty set of states,
+    \item $(R_a)_{a \in Act}$ is a family of binary relations on $S$, each labelled by an action $a \in Act$,
+    \item $V: S \to 2^{Prop}$ is a valuation function.
+\end{itemize}
+
+We write $s \xrightarrow{a} t$ if $(s,t) \in R_a$. For a plan $\sigma = a_1 \ldots a_n \in Act^*$, we write $s \xrightarrow{\sigma} t$ if there exist $s_1, \ldots, s_{n-1}$ such that $s \xrightarrow{a_1} s_1 \xrightarrow{a_2} \cdots \xrightarrow{a_n} t$. A plan $\sigma = a_1 \ldots a_n$ is \textit{strongly executable} at $s$ iff for every $0 \leq k < n$ and every $t$ such that $s \xrightarrow{\sigma_k} t$, the state $t$ has at least one $a_{k+1}$-successor.
+\end{definition}
+
+\begin{definition}[Semantics]
+Let $\mathcal{M} $ be an LTS, and $s$ be a state.
+
+\begin{tabularx}{\textwidth}{lclX}
+$\mathcal{M}, s \models \top$ & & & \textit{always} \\
+$\mathcal{M}, s \models p$ & $\Leftrightarrow$ & & $p \in V(s)$ \\
+$\mathcal{M}, s \models \neg\varphi$ & $\Leftrightarrow$ & & $\mathcal{M}, s \not\models \varphi$ \\
+$\mathcal{M}, s \models \varphi \land \psi$ & $\Leftrightarrow$ & & $\mathcal{M}, s \models \varphi$ and $\mathcal{M}, s \models \psi$ \\
+$\mathcal{M}, s \models Kh(\psi, \varphi)$ & $\Leftrightarrow$ & & there exists a $\sigma \in Act^*$ such that for all $s'$ such that $\mathcal{M}, s' \models \psi$: \\
+& & & $\sigma$ is strongly executable at $s'$ and for all $t$ such that $s' \xrightarrow{\sigma} t$, $\mathcal{M}, t \models \varphi$ \\
+\end{tabularx}
+\end{definition}
+
+The $Kh(\psi,\varphi)$ can be interpreted as "the agent knows how to achieve $\varphi$ given $\psi$". 
 The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=Kh(\lnot\varphi, \bot)$ have been left out for simplicity. 
 
+\subsection{Basic notions in Haskell}
+The syntax is modelled following Definition~3.1.\\
 \begin{code}
 module SingleAgent where
 
@@ -21,18 +55,9 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 
 \end{code}
 
-Instead of a Kripke semantics, the Logic opts for a labelled transition system (LTS) $(\mathcal{S}, \mathcal{R}, \mathcal{V})$ s.t.
-\begin{itemize}
-    \item $\mathcal{S}$ is a non-empty set of states
-    \item $\mathcal{R}:\Sigma\to 2^{\mathcal{S}\times\mathcal{S}}$ is a collection of transitions labelled by actions in $\Sigma$
-    \item $\mathcal{V}: \mathcal{S} \to 2^P$ is a valuation function
-\end{itemize}
-
-Additionally $s \xrightarrow{a} t$ if $(s,t)\in R(a)$, being the relation or `transition' from $s$ to $t$. This is further modelled after this code snippet.  
-In the literature by Y. Wang the LTS is called an ability map. \par
-
+Following Definition~3.2, we model the LTS as follows.
 When creating a LTS, consider that states :: NonEmpty State, and therefore must use the :| constructor, i.e. (n :| [n+1..]). 
-For more information see NonEmpty on Hoogle.
+For more information see NonEmpty on Hoogle.\\
 
 \begin{code}
 type Action = Integer
@@ -48,13 +73,7 @@ data AbilityMap = LTS {
 
 \end{code}
 
-In (Wang2015), two relational notions are introduced:
-
-\begin{itemize}
-    \item $R_a$, the atomic relation associated with an action $a$;
-    \item $R_{\sigma}$, the composite relation associated with a plan $\sigma$.
-\end{itemize}
-
+The relations and strong executability in Definition~3.2 are implemented below.
 Both of these are binary relations on states. Therefore, in our implementation, we use the same Haskell type \texttt{Rel} to represent them, since both can be understood as sets of pairs of states.
 
 To represent the family of atomic relations $R = (R_a)_a$, we index relations by actions. This gives rise to the type \texttt{Relations}, corresponding to the collection of action-labelled transitions in the literature.
@@ -106,15 +125,18 @@ stronglyExecutableAt rs u (a:sigma) =
         all (\v -> stronglyExecutableAt rs v sigma) next
 \end{code}
 
-The satisfaction relation $\models$ defines when a formula $\varphi$ is true in a given state $s$ of an ability map $\mathcal{M}$.
-Before specifying the semantics, we first introduce two helper functions for the semantics of the $Kh$ operator.
+We now implement the semantics in Definition~3.3.
+Note that \texttt{findPlans} enumerates all plans up to a fixed depth (currently 5). 
+This is a bounded approximation: if a witness plan longer than the bound exists, the checker will not find it. 
+A complete decision procedure would require another PSPACE-Complete algorithm in Theorem 1 from \cite{Demri2023}.\\
+
 
 \begin{code}
--- Given an LST and formula, returns the states that satify said formula
+-- Given an LTS and formula, returns the states that satisfy said formula
 statesSatisifying :: AbilityMap -> Form -> [State]
 statesSatisifying m f = [s | s <- toList (states m), isTrue (m, s) f]
 
--- Given an LST, find all plans.
+-- Given an LTS, find all plans.
 findPlans :: AbilityMap -> [Plan]
 findPlans m = nub (concatMap (plansFrom depth) (toList (states m)))
   where
@@ -159,8 +181,9 @@ isTrue (m, _) (KH f g) =
 (|=) = isTrue
 \end{code}
 
+\subsection{QuickCheck for $\mathcal{L}_{Kh}$}
 Finally, for this section we define the instances of Arbitrary for \texttt{Form} and \texttt{Arbitrary} respectively. 
-For \texttt{Form} we use the \texttt{sized} function to ensure that the generated formulas remain finite in size.
+For \texttt{Form} we use the \texttt{sized} function to ensure that the generated formulas remain finite in size.\\
 
 \begin{code}
 instance Arbitrary Form where
@@ -205,7 +228,7 @@ instance Arbitrary AbilityMap where
 \end{code}
 
 For now, we haven't had time yet to implement any `interactive' elements. But it is possible to try out semantics using the definitions by running \texttt{stack ghci}.
-For example:
+For example:\\
 
 \begin{verbatim}
 ghci> import Test.QuickCheck

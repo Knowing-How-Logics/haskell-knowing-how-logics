@@ -1,8 +1,12 @@
 {- HLINT ignore "Eta reduce" -}
 \section{$reg\text{-}\mathcal{L}^U_{KH}$ in Haskell}\label{sec:MultiAgent}
 
-In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan be fail-proof, meaning that each partial execution must be complete. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur generally: the agent does not know which plan is adequate for the situation. All he can do is to blindly apply the plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
-We now introduce a new logic of \textit{knowing how} for a multi-agent setting defined in \cite{Demri2023}, extending the $LTS$ with a notion of epistemic indistinguishability between plans. The uncertainty of an agent is encoded by equivalence classes of plans, and each such class is represented by a finite automaton. More precisely, each equivalence class of indistinguishable plans is represented by the language recognized by a finite automaton.
+In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan that is fail-proof, meaning that each partial execution must be completable. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur: the agent does not know which plan is adequate for the situation. All he can do is blindly apply a plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
+
+We now introduce a new logic of \textit{knowing how} for a multi-agent setting defined in \cite{Demri2023}, extending the LTS with a notion of epistemic indistinguishability between plans. The uncertainty of an agent is encoded by equivalence classes of plans, and each such class is represented by a finite automaton. More precisely, each equivalence class of indistinguishable plans is represented by the language recognised by a finite automaton.\par
+
+In Theorem 2 from \cite{Demri2023}, it is shown that the model-checking problem for this logic is in PTIME. The proof relies on reducing both conditions of the $Kh$-modality to graph reachability checks. In this section, we provide a concrete implementation of this algorithm in Haskell, closely following the constructions from the paper.\par
+
 
 \subsection{Preliminaries}
 
@@ -13,7 +17,7 @@ Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \i
 \]
 \end{definition}
 
-We first introduce the automata used to represent classes of plans.
+We first introduce the automadta used to represent classes of plans.
 
 \begin{definition}[Automaton]
 A non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act, \delta, I, F)$, where:
@@ -107,6 +111,7 @@ import SingleAgent
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
+import GHC.Conc (par)
 
 type Agent = Int
 
