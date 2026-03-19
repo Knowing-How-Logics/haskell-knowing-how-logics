@@ -1,9 +1,8 @@
 {- HLINT ignore "Eta reduce" -}
 \section{$reg\text{-}\mathcal{L}^U_{KH}$ in Haskell}\label{sec:MultiAgent}
 
-In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg\text{-}\mathcal{L}^U_{KH}$ \cite{Demri2023}. 
-The paper we reference combines and alters already existing languages into the one we model here. 
-The first key difference from the previous language is that it moves from a single-agent language to a multi-agent one. 
+In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan be fail-proof, meaning that each partial execution must be complete. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur generally: the agent does not know which plan is adequate for the situation. All he can do is to blindly apply the plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
+We now introduce a new logic of \textit{knowing how} for a multi-agent setting defined in \cite{Demri2023}, extending the $LTS$ with a notion of epistemic indistinguishability between plans. The uncertainty of an agent is encoded by equivalence classes of plans, and each such class is represented by a finite automaton. More precisely, each equivalence class of indistinguishable plans is represented by the language recognized by a finite automaton.
 
 \subsection{Preliminaries}
 
@@ -21,7 +20,7 @@ A non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act, \delta, 
 \begin{itemize}
     \item $Q$ is a finite set of states,
     \item $Act$ is a finite alphabet of actions,
-    \item $\delta \subseteq Q \times Act \times Q$ is the transition relation,
+    \item $\delta : Q \times Act \to 2^Q$ is a transition function,
     \item $I \subseteq Q$ is the set of initial states,
     \item $F \subseteq Q$ is the set of accepting (final) states.
 \end{itemize}
@@ -116,7 +115,7 @@ data RegForm = P Proposition | Neg RegForm | Disj RegForm RegForm | KH Agent Reg
 
 \end{code}
 
-The automaton type implements Definition~4.2, with $I$ and $F$ modelled as lists to support the general case.\\
+The automaton type implements Definition~4.2.\\
 
 \begin{code}
 type Successors = [State]
@@ -131,53 +130,7 @@ data Automaton = ATMN {
 } deriving (Eq, Show, Ord)
 \end{code}
 
-The following functions implement the relational notions from Definition~4.4.\\
-\begin{code}
-type PlanSet = [Plan]
-
--- R_pi(u) = union of R_sigma(u) for all sigma in pi
-rPiU :: Relations -> State -> PlanSet -> [State]
-rPiU rs u plans =
-    nub (concat [executePlan rs u sigma | sigma <- plans])
-
--- R_pi(X) = union of R_pi(u) for all u in X
-rPiX :: Relations -> [State] -> PlanSet -> [State]
-rPiX rs xs plans =
-    nub (concat [rPiU rs u plans | u <- xs])
-
--- SE(sigma) = set of all states at which sigma is strongly executable
-seSigma :: [State] -> Relations -> Plan -> [State]
-seSigma sts rs sigma =
-    [u | u <- sts, stronglyExecutableAt rs u sigma]
-
--- SE(pi) = intersection of SE(sigma) for all sigma in pi
-sePi :: [State] -> Relations -> PlanSet -> [State]
-sePi sts rs plans =
-    [u | u <- sts, all (stronglyExecutableAt rs u) plans]
-\end{code}
-
-The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~4.5. Because 4.4 and 4.5 are simply same concepts but in different perspectives.\par
-
-The reg-LTS$^U$ model implements Definition~4.6. \\
-\begin{code}
-type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
-
-data RegLTSU = RegLTSU{ 
-        statesM :: [State],
-        relationsM :: Relations,
-        uncertainty :: Uncertainty,
-        valuationM :: Valuation -- use the Valuation from singleAgent
-    } deriving (Eq, Show, Ord)
-
--- Given an agent i, return U_i = [A_1,...]
-getAgentAuts :: RegLTSU -> Agent -> [Automaton]
-getAgentAuts m agent =
-    fromMaybe [] (lookup agent (uncertainty m))
-
--- TODO: Shall we write a checker to check A_i's are indeed automata. Namely, are the language of them really pairwise disjoint? Or simply leave it as an assumption?
-\end{code}
-
-Finally, the product digraph from Definition~4.3 is implemented below. The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively.\\
+The product digraph from Definition~4.3 is implemented below. The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively.\\
 \begin{code}
 type GVertex = (State, State) -- (Automaton State, LTS State)
 type GEdge = (GVertex, GVertex)
@@ -208,17 +161,61 @@ buildDigraph m atmn = Digraph nodes edges
             , t'     <- getLtsNext m t act
             ]
 \end{code}
+
+The following functions implement the relational notions from Definition~4.4.\\
+\begin{code}
+type PlanSet = [Plan]
+
+-- R_pi(u) = union of R_sigma(u) for all sigma in pi
+rPiU :: Relations -> State -> PlanSet -> [State]
+rPiU rs u plans =
+    nub (concat [executePlan rs u sigma | sigma <- plans])
+
+-- R_pi(X) = union of R_pi(u) for all u in X
+rPiX :: Relations -> [State] -> PlanSet -> [State]
+rPiX rs xs plans =
+    nub (concat [rPiU rs u plans | u <- xs])
+
+-- SE(sigma) = set of all states at which sigma is strongly executable
+seSigma :: [State] -> Relations -> Plan -> [State]
+seSigma sts rs sigma =
+    [u | u <- sts, stronglyExecutableAt rs u sigma]
+
+-- SE(pi) = intersection of SE(sigma) for all sigma in pi
+sePi :: [State] -> Relations -> PlanSet -> [State]
+sePi sts rs plans =
+    [u | u <- sts, all (stronglyExecutableAt rs u) plans]
+\end{code}
+
+The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~4.5. Because 4.4 and 4.5 are simply same concepts but in different perspectives.\par
+
+Finally, the reg-LTS$^U$ model implements Definition~4.6.\\
+\begin{code}
+type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
+
+data RegLTSU = RegLTSU{ 
+        statesM :: [State],
+        relationsM :: Relations,
+        uncertainty :: Uncertainty,
+        valuationM :: Valuation -- use the Valuation from singleAgent
+    } deriving (Eq, Show, Ord)
+
+-- Given an agent i, return U_i = [A_1,...]
+getAgentAuts :: RegLTSU -> Agent -> [Automaton]
+getAgentAuts m agent =
+    fromMaybe [] (lookup agent (uncertainty m))
+\end{code}
+
 \subsection{Model checker in Haskell}
 We now discuss the implementation model checking algorithms for $reg\text{-}\mathcal{L}^U_{KH}$ in Haskell.\par
 Given a finite reg-LTS$^U$ $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$, 
-a state $s \in S$, and a formula $Kh_a(\varphi, \psi)$, 
-we check whether $\mathcal{S}, s \models Kh_a(\varphi, \psi)$ by iterating over 
+a state $s \in S$, and a formula $Kh_i(\varphi, \psi)$, we check whether $\mathcal{S}, s \models Kh_i(\varphi, \psi)$ by iterating over 
 all automata $\mathcal{A} \in U_a$ and verifying two conditions:
 \begin{enumerate}
     \item $\llbracket\varphi\rrbracket^{\mathcal{S}} \subseteq \mathrm{SE}(L(\mathcal{A}))$
     \item $R_{L(\mathcal{A})}(\llbracket\varphi\rrbracket^{\mathcal{S}}) \subseteq \llbracket\psi\rrbracket^{\mathcal{S}}$
 \end{enumerate}
-where $\llbracket\varphi\rrbracket^{\mathcal{S}}$ is the set of states in $\mathcal{S}$ at which $\varphi$ holds.
+where $\llbracket\varphi\rrbracket^{\mathcal{S}}$ is the set of states in $\mathcal{S}$ at which $\varphi$ holds. Once we find such automaton, the formula $Kh_i(\varphi, \psi)$ is then satisfied.
 Since $L(\mathcal{A})$ may be infinite, directly enumerating all plans is not feasible. 
 Following \cite{Demri2023}, we handle each condition via a separate algorithm, 
 both of which reduce the problem to reachability checks on finite graphs.\par
@@ -226,9 +223,8 @@ To perform the reachability checks in PTIME, we use the following \textit{depth-
 {\small
 \begin{algorithmic}[1]
 \Require Digraph $G=(V,E)$, start vertex $v_0$, target set $T_0 \subseteq V$
-\State $v \gets v_0$
-\State $T \gets T_0$
-\State $visited \gets \emptyset$
+\State \Call{DFS}{$G, v_0, T_0, \emptyset$}
+
 \Function{DFS}{$G, v, T, visited$}
     \If{$v \in T$} \Return \textbf{true} \EndIf
     \If{$v \in visited$} \Return \textbf{false} \EndIf
@@ -240,6 +236,7 @@ To perform the reachability checks in PTIME, we use the following \textit{depth-
 \EndFunction
 \end{algorithmic}
 }
+The algorithm above runs in $O(|V|+|E|)$, which is polynomial.
 In Haskell:\\
 \begin{code}
 -- Successors of a vertex in the digraph
@@ -344,7 +341,8 @@ Let $\mathcal{A}_1$ and $\mathcal{A}_2$ be two automata. To check whether $L(\ma
 {\small
 \begin{algorithmic}[1]
 \Require Automata $\mathcal{A}_1 = (Q_1, Act_1, \delta_1, I_1, F_1)$ and $\mathcal{A}_2 = (Q_2, Act_2, \delta_2, I_2, F_2)$
-\Function{IntersectionNonEmpty}{$\mathcal{A}_1, \mathcal{A}_2$}
+\Function{IntersectionNonEmpty}{$\mathcal{A}_1, \mathcal{A}_2$}\\
+    //Build product automaton
     \State $V \gets Q_1 \times Q_2$
     \State $E \gets \{((q_1,q_2),(q_1',q_2')) \mid a \in Act_1 \cap Act_2,\; q_1 \xrightarrow{a} q_1' \in \delta_1,\; q_2 \xrightarrow{a} q_2' \in \delta_2\}$
     \State $G \gets (V, E)$
@@ -434,8 +432,7 @@ checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
         let pathAut = buildPathAutomaton m t1 t2
         in  intersectionNonEmpty aut pathAut
 \end{code}
-
-Putting things together, we complete the model checker for the ability-based knowing how logic.\\
+Following the semantics defined in Definition~4.7 and putting things together, we complete the model checker for $reg\text{-}\mathcal{L}^U_{KH}$.\\
 \begin{code}
 -- [[phi]]= set of states that phi holds
 truthSet :: RegLTSU -> RegForm -> [State]
