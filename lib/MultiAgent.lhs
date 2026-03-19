@@ -111,11 +111,10 @@ import SingleAgent
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
-import GHC.Conc (par)
 
 type Agent = Int
 
-data RegForm = P Proposition | Neg RegForm | Disj RegForm RegForm | KH Agent RegForm RegForm
+data RegForm = Prop Proposition | Negation RegForm | Disj RegForm RegForm | KHI Agent RegForm RegForm
     deriving (Eq, Show, Ord)
 
 \end{code}
@@ -445,11 +444,11 @@ truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 
 -- Satisfaction relation for the propositional fragment
 isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
-isTrueReg (m, s) (P p) =
+isTrueReg (m, s) (Prop p) =
     case lookup s (valuationM m) of
         Just props -> p `elem` props
         Nothing -> False
-isTrueReg (m, s) (Neg f) =
+isTrueReg (m, s) (Negation f) =
     not (isTrueReg (m, s) f)
 isTrueReg (m, s) (Disj f g) =
     isTrueReg (m, s) f || isTrueReg (m, s) g
@@ -457,13 +456,13 @@ isTrueReg (m, s) (Disj f g) =
 -- Kh_a(phi, psi) holds iff there exists A in U_a such that
 -- (1) [[phi]] is subset of SE(L(A))      
 -- (2) R_{L(A)}([[phi]]) is subset of [[psi]]  
-isTrueReg (m, _) (KH agent phi psi) =
+isTrueReg (m, _) (KHI agent phi psi) =
     any (\aut -> checkCond1 m aut phiStates
               && checkCond2 m aut phiStates negPsiStates
     ) (getAgentAuts m agent)
   where
     phiStates    = truthSet m phi          -- [[phi]]
-    negPsiStates = truthSet m (Neg psi)    -- [[neg psi]]
+    negPsiStates = truthSet m (Negation psi)    -- [[neg psi]]
 
 -- Infix alias for the satisfaction relation
 (||=) :: (RegLTSU, State) -> RegForm -> Bool
