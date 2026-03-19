@@ -26,7 +26,7 @@ We write $s \xrightarrow{a} t$ if $(s,t) \in R_a$. For a plan $\sigma = a_1 \ldo
 Let $\mathcal{M} $ be an LTS, and $s$ be a state.
 
 \begin{tabularx}{\textwidth}{lclX}
-$\mathcal{M}, s \models \top$ & & & \textit{always} \\
+$\mathcal{M}, s \models \top$ & $\Leftrightarrow$& & \textit{always} \\
 $\mathcal{M}, s \models p$ & $\Leftrightarrow$ & & $p \in V(s)$ \\
 $\mathcal{M}, s \models \neg\varphi$ & $\Leftrightarrow$ & & $\mathcal{M}, s \not\models \varphi$ \\
 $\mathcal{M}, s \models \varphi \land \psi$ & $\Leftrightarrow$ & & $\mathcal{M}, s \models \varphi$ and $\mathcal{M}, s \models \psi$ \\
@@ -124,7 +124,7 @@ stronglyExecutableAt rs u (a:sigma) =
     in  not (null next) &&
         all (\v -> stronglyExecutableAt rs v sigma) next
 \end{code}
-
+\subsection{Model checker in Haskell}
 We now implement the semantics in Definition~3.3.
 Note that \texttt{findPlans} enumerates all plans up to a fixed depth (currently 5). 
 This is a bounded approximation: if a witness plan longer than the bound exists, the checker will not find it. 

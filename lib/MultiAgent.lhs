@@ -220,7 +220,7 @@ all automata $\mathcal{A} \in U_a$ and verifying two conditions:
     \item $\llbracket\varphi\rrbracket^{\mathcal{S}} \subseteq \mathrm{SE}(L(\mathcal{A}))$
     \item $R_{L(\mathcal{A})}(\llbracket\varphi\rrbracket^{\mathcal{S}}) \subseteq \llbracket\psi\rrbracket^{\mathcal{S}}$
 \end{enumerate}
-where $\llbracket\varphi\rrbracket^{\mathcal{S}}$ is the set of states in $\mathcal{S}$ at which $\varphi$ holds. Once we find such automaton, the formula $Kh_i(\varphi, \psi)$ is then satisfied.
+Once we find such automaton, the formula $Kh_i(\varphi, \psi)$ is then satisfied.
 Since $L(\mathcal{A})$ may be infinite, directly enumerating all plans is not feasible. 
 Following \cite{Demri2023}, we handle each condition via a separate algorithm, 
 both of which reduce the problem to reachability checks on finite graphs.\par
