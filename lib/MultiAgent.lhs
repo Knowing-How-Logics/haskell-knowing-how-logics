@@ -1,17 +1,83 @@
 {- HLINT ignore "Eta reduce" -}
-\section{Multi Agent}\label{sec:MultiAgent}
+\section{$reg\text{-}\mathcal{L}^U_{KH}$ in Haskell}\label{sec:MultiAgent}
 
-In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg-\mathcal{L}^U_{KH}$ \cite{Demri2023}. 
+In this section we model the language of Uncertainty-based Knowing How with regularity constraints $reg\text{-}\mathcal{L}^U_{KH}$ \cite{Demri2023}. 
 The paper we reference combines and alters already existing languages into the one we model here. 
 The first key difference from the previous language is that it moves from a single-agent language to a multi-agent one. 
 
-Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \in Prop$ and $i \in Agt$, 
-the language $reg-\mathcal{L}^U_{KH}$ is defined as 
+\subsection{Preliminaries}
+
+\begin{definition}[Syntax]
+Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \in Prop$ and $i \in Agt$, the language $reg\text{-}\mathcal{L}^U_{KH}$ is defined by
 \[
-\varphi := p \;|\; \lnot\varphi \;|\; \varphi\lor\varphi \;|\; Kh_i (\psi,\varphi)
+\varphi := p \;|\; \lnot\varphi \;|\; \varphi\lor\varphi \;|\; Kh_i(\psi,\varphi).
 \]
-s.t. $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true".\par
-The semantics of this language is defined as follows.
+\end{definition}
+
+We first introduce the automata used to represent classes of plans.
+
+\begin{definition}[Automaton]
+A non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act, \delta, I, F)$, where:
+\begin{itemize}
+    \item $Q$ is a finite set of states,
+    \item $Act$ is a finite alphabet of actions,
+    \item $\delta \subseteq Q \times Act \times Q$ is the transition relation,
+    \item $I \subseteq Q$ is the set of initial states,
+    \item $F \subseteq Q$ is the set of accepting (final) states.
+\end{itemize}
+\end{definition}
+
+To connect an automaton with the underlying transition system, we use the following product digraph.
+
+\begin{definition}[Digraph]
+Given a reg-LTS$^U$ $\mathcal{S}$ and an automaton $\mathcal{A} = (Q, Act, \delta, I, F)$, we define a digraph $G = (V, E)$ as follows:
+\begin{itemize}
+    \item $V = Q \times S$, representing the combined states of the automaton and the underlying transition system;
+    \item $E$ is the set of edges such that $((q, t), (q', t')) \in E$ if and only if there exists an action $a \in Act$ such that:
+    \begin{enumerate}
+        \item $q \xrightarrow{a} q'$ in $\mathcal{A}$;
+        \item $(t, t') \in R_a$.
+    \end{enumerate}
+\end{itemize}
+\end{definition}
+
+This construction synchronizes transitions of the automaton with transitions of the LTS under the same action, allowing us to track which runs of the automaton are realizable in the model.
+
+We next recall the relational notions needed for the semantics.
+
+\begin{definition}
+For $\pi\subseteq Act^{*}$, $u\in S$, and $U\subseteq S$, define
+\[
+R_{\pi} \,:=\,\bigcup_{\sigma\in \pi}R_{\sigma}, \qquad
+R_{\pi}(u) \,:=\,\bigcup_{\sigma\in \pi}R_{\sigma}(u), \qquad
+R_{\pi}(U) \,:=\,\bigcup_{u\in U}R_{\pi}(u).
+\]
+A set of plans $\pi\subseteq Act^{*}$ is \textit{strongly executable} at $u\in S$ iff every plan $\sigma \in \pi$ is strongly executable at $u$. This gives rise to the definition $SE(\pi)\, :=\,\bigcap_{\sigma\in\pi}SE(\sigma)$,
+which collects all states at which every plan in $\pi$ is strongly executable.
+\end{definition}
+
+These notions can be lifted from plan sets to automata via their accepted languages.
+
+\begin{definition}
+In terms of automata, $\mathrm{SE}(L(\mathcal{A})) := \bigcap_{\sigma \in L(\mathcal{A})} \mathrm{SE}(\sigma)$ collects all states at which every plan in $L(\mathcal{A})$ is strongly executable, and $R_{L(\mathcal{A})} := \bigcup_{\sigma \in L(\mathcal{A})} R_{\sigma}$ collects all transitions realisable by some plan in $L(\mathcal{A})$.
+\end{definition}
+
+We now define reg-LTS$^U$ models.
+
+\begin{definition}
+A reg-LTS$^U$ is a tuple $\mathcal{S}=(S, (R_a)_{a\in Act}, (U_i)_{i\in Agt}, V)$, where the elements of $U_i$ associated with an agent $i$ are finite automata, namely,
+\[
+\emptyset \neq U_i = \{\mathcal{A}_1, \mathcal{A}_2, \ldots\}.
+\]
+Here, $L(\mathcal{A}_i)$ denotes the language accepted by $\mathcal{A}_i$. Moreover, for every $\mathcal{A}_m, \mathcal{A}_n \in U_i$ such that $m \neq n$, we have
+\[
+L(\mathcal{A}_m)\cap L(\mathcal{A}_n)=\emptyset.
+\]
+\end{definition}
+
+Finally, we can state the semantics of the language.
+
+\begin{definition}[Semantics]
 Let $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$ be a finite reg-LTS$^U$, and $s \in S$. The satisfaction relation $\models$ is defined as:
 
 \begin{tabularx}{\textwidth}{lclX} 
@@ -20,7 +86,11 @@ $\mathcal{S}, s \models \neg \varphi$ & \textit{iff} & & $\mathcal{S}, s \not\mo
 $\mathcal{S}, w \models \psi \vee \varphi$ & \textit{iff} & & $\mathcal{S}, w \models \psi \text{ or } \mathcal{S}, w \models \varphi$ \\
 $\mathcal{S}, s \models Kh_i(\psi, \varphi)$ & \textit{iff} & & there is a finite automaton $\mathcal{A}\in U_i$, such that (1) $[\![\psi]\!]^{\mathcal{S}}\subseteq SE(L(\mathcal{A}))$ and (2) for every $t\in [\![\psi]\!]^\mathcal{S}$, $R_{L(\mathcal{A})}(t) \subseteq [\![\varphi]\!]^\mathcal{S}$,\\
 \end{tabularx}
-where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, w \models \psi\}$ is the set of all states satisfying $\psi$.
+where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, w \models \psi\}$ is the set of all states satisfying $\psi$. 
+\end{definition}
+The $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true".
+\subsection{Basic notions in Haskell}
+The syntax is modelled following Definition~4.1.\\
 \begin{code}
 module MultiAgent where
 import SingleAgent
@@ -46,21 +116,8 @@ data RegForm = P Proposition | Neg RegForm | Disj RegForm RegForm | KH Agent Reg
 
 \end{code}
 
-Now we define the automaton used in the model-checking procedure.
-Formally, a non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act, \delta, I, F)$, where:
-\begin{itemize}
-    \item $Q$ is a finite set of states,
-    \item $Act$ is a finite alphabet of actions,
-    \item $\delta \subseteq Q \times Act \times Q$ is the transition relation,
-    \item $I \subseteq Q$ is the set of initial states,
-    \item $F \subseteq Q$ is the set of accepting (final) states.
-\end{itemize}
+The automaton type implements Definition~4.2, with $I$ and $F$ modelled as lists to support the general case.\\
 
-Since the automaton considered here is non-deterministic, its transition component is modeled as a relation rather than as a function. 
-For the special automaton $\mathcal{A}_{(t_1,t_2)}$ used later in Condition (2), we define its transitions by mirroring the LTS relations: for all $t,t' \in Q$ and $a \in Act$,
-\[
-t \xrightarrow{a} t' \in \delta \iff (t,t') \in R_a.
-\]
 \begin{code}
 type Successors = [State]
 type ActionAtState = (State, Action) 
@@ -74,10 +131,7 @@ data Automaton = ATMN {
 } deriving (Eq, Show, Ord)
 \end{code}
 
-For $\pi\subseteq Act^{*}$, $u\in W$ and $U\subseteq W$, define:
-\[R_{\pi} \,:=\,\bigcup_{\sigma\in \pi}R_{\sigma}, \qquad R_{\pi}(u) \,:=\,\bigcup_{\sigma\in \pi}R_{\sigma}(u), \qquad R_{\pi}(U) \,:=\,\bigcup_{u\in U}R_{\pi}(u)\]
-A set of plans $\pi\subseteq Act^{*}$ is \textit{strongly executable} at $u\in W$ iff every plan $\sigma \in \pi$ is strongly executable at $u$. This gives rise to the definition $SE(\pi)\, :=\,\bigcap_{\sigma\in\pi}SE(\sigma)$, collecting all states where every plan in $\pi$ is strongly executable.\\
-
+The following functions implement the relational notions from Definition~4.4.\\
 \begin{code}
 type PlanSet = [Plan]
 
@@ -102,12 +156,9 @@ sePi sts rs plans =
     [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
 
-In terms of automata, $\mathrm{SE}(L(\mathcal{A})) := \bigcap_{\sigma \in L(\mathcal{A})} \mathrm{SE}(\sigma)$ collects all states at which every plan in $L(\mathcal{A})$ is strongly executable, and $R_{L(\mathcal{A})} := \bigcup_{\sigma \in L(\mathcal{A})} R_{\sigma}$ collects all transitions realisable by some plan in $L(\mathcal{A})$. The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper.\par
+The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~4.5. Because 4.4 and 4.5 are simply same concepts but in different perspectives.\par
 
-Each agent has sets of indistinguishable plans, forming equivalence classes. Since plans are finite sequences of actions, they can be viewed as strings over $Act$. From this perspective, each equivalence class can be represented as the language of a finite automaton $\mathcal{A}$, and a witness for $Kh_i$ is a string in $L(\mathcal{A})$.\par
-
-A reg-LTS$^U$ is a tuple $\mathcal{S}=(S, (R_a)_{a\in Act}, (U_i)_{i\in Agt}, V)$, where the elements of $U_i$ associated with an agent $i$ are \textit{finite automata}, namely, $\emptyset \neq U_i = \{\mathcal{A}_1, \mathcal{A}_2, \ldots\}$. Here, $L(\mathcal{A}_i)$ denotes the language accepted by $\mathcal{A}_i$. For every $\mathcal{A}_m, \mathcal{A}_n \in U_i$ such that $m \neq n$, we have $L(\mathcal{A}_m)\cap L(\mathcal{A}_n)=\emptyset$.\\
-
+The reg-LTS$^U$ model implements Definition~4.6. \\
 \begin{code}
 type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
 
@@ -125,20 +176,8 @@ getAgentAuts m agent =
 
 -- TODO: Shall we write a checker to check A_i's are indeed automata. Namely, are the language of them really pairwise disjoint? Or simply leave it as an assumption?
 \end{code}
-Now we define the product digraph $G$ used in the model-checking procedure. 
-Given a reg-LTS$^U$ $\mathcal{S}$ and an automaton $\mathcal{A} = (Q, Act, \delta, I, F)$, we construct a digraph $G = (V, E)$ as follows:
 
-\begin{itemize}
-    \item $V = Q \times S$, representing the combined states of the automaton and the underlying transition system;
-    \item $E$ is the set of edges such that $((q, t), (q', t')) \in E$ if and only if there exists an action $a \in Act$ such that:
-    \begin{enumerate}
-        \item $q \xrightarrow{a} q'$ in $\mathcal{A}$;
-        \item $(t, t') \in R_a$.
-    \end{enumerate}
-\end{itemize}
-
-This construction synchronizes transitions of the automaton with transitions in the LTS under the same action, allowing us to track which runs of the automaton are realizable in the model.\\
-
+Finally, the product digraph from Definition~4.3 is implemented below. The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively.\\
 \begin{code}
 type GVertex = (State, State) -- (Automaton State, LTS State)
 type GEdge = (GVertex, GVertex)
@@ -169,7 +208,8 @@ buildDigraph m atmn = Digraph nodes edges
             , t'     <- getLtsNext m t act
             ]
 \end{code}
-
+\subsection{Model checker in Haskell}
+We now discuss the implementation model checking algorithms for $reg\text{-}\mathcal{L}^U_{KH}$ in Haskell.\par
 Given a finite reg-LTS$^U$ $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$, 
 a state $s \in S$, and a formula $Kh_a(\varphi, \psi)$, 
 we check whether $\mathcal{S}, s \models Kh_a(\varphi, \psi)$ by iterating over 
@@ -300,6 +340,49 @@ checkCond1 m atmn =
     all (\s -> not (checkSE m s atmn))
 \end{code}
 
+Let $\mathcal{A}_1$ and $\mathcal{A}_2$ be two automata. To check whether $L(\mathcal{A}_1)\cap L(\mathcal{A}_2) \neq \emptyset$, it suffices to construct the product automaton and check whether any accepting state pair in $F_1 \times F_2$ is reachable from some initial state pair in $I_1 \times I_2$.\\
+{\small
+\begin{algorithmic}[1]
+\Require Automata $\mathcal{A}_1 = (Q_1, Act_1, \delta_1, I_1, F_1)$ and $\mathcal{A}_2 = (Q_2, Act_2, \delta_2, I_2, F_2)$
+\Function{IntersectionNonEmpty}{$\mathcal{A}_1, \mathcal{A}_2$}
+    \State $V \gets Q_1 \times Q_2$
+    \State $E \gets \{((q_1,q_2),(q_1',q_2')) \mid a \in Act_1 \cap Act_2,\; q_1 \xrightarrow{a} q_1' \in \delta_1,\; q_2 \xrightarrow{a} q_2' \in \delta_2\}$
+    \State $G \gets (V, E)$
+    \State $T \gets F_1 \times F_2$
+    \For{$(q_1, q_2) \in I_1 \times I_2$}
+        \If{\Call{DFS}{$(q_1, q_2)$} with target $T$} \Return \textbf{true} \EndIf
+    \EndFor
+    \State \Return \textbf{false}
+\EndFunction
+\end{algorithmic}
+}
+To check Condition (2), it suffices to check whether
+\[
+L(\mathcal{A})\cap \bigcup \{L(\mathcal{A}_{(t_1,t_2)})\mid t_1 \in \llbracket\varphi\rrbracket^{\mathcal{S}},\, t_2 \in \llbracket\neg\psi\rrbracket^{\mathcal{S}}\}=\emptyset,
+\]
+where $\mathcal{A}_{(t_1,t_2)} = (S, Act, \delta', \{t_1\}, \{t_2\})$ is the path automaton whose transitions mirror the LTS, i.e.\ $\delta'(t, a) = \{t' \mid (t, t') \in R_a\}$. Its language is precisely $L(\mathcal{A}_{(t_1,t_2)}) = \{\sigma \in Act^* \mid t_2 \in R_\sigma(t_1)\}$.
+
+By distributivity of $\cap$ over $\bigcup$, this is equivalent to checking that
+\[
+L(\mathcal{A})\cap L(\mathcal{A}_{(t_1,t_2)})=\emptyset \quad \text{for all } (t_1, t_2) \in \llbracket\varphi\rrbracket^{\mathcal{S}} \times \llbracket\neg\psi\rrbracket^{\mathcal{S}}.
+\]
+
+{\small
+\begin{algorithmic}[1]
+\Require reg-LTS$^U$ $\mathcal{S}$, automaton $\mathcal{A}$, truth sets $\llbracket\varphi\rrbracket^{\mathcal{S}}$ and $\llbracket\neg\psi\rrbracket^{\mathcal{S}}$
+\Function{CheckCond2}{$\mathcal{S}, \mathcal{A}, \llbracket\varphi\rrbracket^{\mathcal{S}}, \llbracket\neg\psi\rrbracket^{\mathcal{S}}$}
+    \For{$t_1 \in \llbracket\varphi\rrbracket^{\mathcal{S}}$}
+        \For{$t_2 \in \llbracket\neg\psi\rrbracket^{\mathcal{S}}$}
+            \If{\Call{IntersectionNonEmpty}{$\mathcal{A}, \mathcal{A}_{(t_1,t_2)}$}} \Return \textbf{false} \EndIf
+        \EndFor
+    \EndFor
+    \State \Return \textbf{true}
+\EndFunction
+\end{algorithmic}
+}
+
+In Haskell:\\
+
 \begin{code}
 -- Construct A_(t1, t2)
 -- This automaton accepts all plans from t1 to t2
@@ -352,6 +435,7 @@ checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
         in  intersectionNonEmpty aut pathAut
 \end{code}
 
+Putting things together, we complete the model checker for the ability-based knowing how logic.\\
 \begin{code}
 -- [[phi]]= set of states that phi holds
 truthSet :: RegLTSU -> RegForm -> [State]
