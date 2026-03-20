@@ -46,6 +46,7 @@ module SingleAgent where
 import Data.List (nub, delete)
 -- import NoneEmpty including its constructor :|
 import Data.List.NonEmpty (NonEmpty(..), toList)
+-- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
 import Test.QuickCheck
 
@@ -196,24 +197,32 @@ Formulas may be created in ghci using \texttt{parseForm}. The following inputs a
 
 \begin{code}
 pForm :: Parsec String () Form
--- Start parsing at implication level
-pForm = spaces *> pImp where
-    -- Abbreviation: Implication (bind right-associative)
-    pImp = chainr1 pDisj (spaces *> string "->" *> spaces >> return (\p q -> Neg (Conj p (Neg q))))
-    -- Abbreviation: Disjunction (bind left-associative)
+pForm = spaces *> pImpl where
+    -- Start parsing at implication level
+    -- Abbreviation: Implication (right-associative)
+    pImpl = chainr1 pDisj (spaces *> string "->" *> spaces >> return (\p q -> Neg (Conj p (Neg q))))
+
+    -- Abbreviation: Disjunction (left-associative)
     pDisj = chainl1 pConj (spaces *> oneOf "vV" *> spaces >> return (\p q -> Neg (Conj (Neg p) (Neg q))))
-    -- Bind left-associative
-    pConj = chainl1 pKH (spaces *> char '^' *> spaces >> return Conj)
-    -- Handle KH
-    pKH = try (KH <$> (string "KH" >> spaces *> pUnary) <*> (spaces *> pUnary))
-     <|> pUnary
-    -- Handle unary cases
-    pUnary = try pNeg <|> pTrue <|> pAtom 
-    pNeg = char '!' >> spaces >> Neg <$> pUnary
-    pAtom = pVar <|> between (char '(' *> spaces) (spaces *> char ')') pForm
-    pVar = spaces *> oneOf "pP" *> spaces *> (P . read <$> many1 digit) <* spaces
-    -- Handle truth-constant
+    
+    -- Conjunction (left-associative)
+    pConj = chainl1 pPrefix (spaces *> char '^' *> spaces >> return Conj)
+
+    pPrefix = try pNeg <|> try pKH <|> pTrue <|> pRemainder 
+
+    -- Negation
+    pNeg = char '!' >> spaces >> Neg <$> pPrefix
+    
+    -- Knowing How
+    pKH = try (KH <$> (string "KH" >> spaces *> pPrefix) 
+        <*> (spaces *> pPrefix))
+
+    -- Truth-constant
     pTrue = char 'T' >> return T
+    
+    pRemainder = pVar <|> between (char '(' *> spaces) (spaces *> char ')') pForm
+    pVar = spaces *> oneOf "pP" *> spaces *> (P . read <$> many1 digit) <* spaces
+
 
 parseForm :: String -> Either ParseError Form
 parseForm = parse (pForm <* eof) "input"
