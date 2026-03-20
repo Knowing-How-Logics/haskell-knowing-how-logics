@@ -96,6 +96,7 @@ The $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the ag
 The syntax is modelled following Definition~4.1.\\
 \begin{code}
 module MultiAgent where
+
 import SingleAgent
   ( Proposition
   , Action
@@ -111,11 +112,13 @@ import SingleAgent
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
-import GHC.Conc (par)
+
+-- import parsec but hide State to avoid conflicts
+import Text.Parsec hiding (State)
 
 type Agent = Int
 
-data RegForm = P Proposition | Neg RegForm | Disj RegForm RegForm | KH Agent RegForm RegForm
+data RegForm = Prop Proposition | Not RegForm | Disj RegForm RegForm | KHI Agent RegForm RegForm
     deriving (Eq, Show, Ord)
 
 \end{code}
@@ -445,11 +448,11 @@ truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 
 -- Satisfaction relation for the propositional fragment
 isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
-isTrueReg (m, s) (P p) =
+isTrueReg (m, s) (Prop p) =
     case lookup s (valuationM m) of
         Just props -> p `elem` props
         Nothing -> False
-isTrueReg (m, s) (Neg f) =
+isTrueReg (m, s) (Not f) =
     not (isTrueReg (m, s) f)
 isTrueReg (m, s) (Disj f g) =
     isTrueReg (m, s) f || isTrueReg (m, s) g
@@ -457,15 +460,68 @@ isTrueReg (m, s) (Disj f g) =
 -- Kh_a(phi, psi) holds iff there exists A in U_a such that
 -- (1) [[phi]] is subset of SE(L(A))      
 -- (2) R_{L(A)}([[phi]]) is subset of [[psi]]  
-isTrueReg (m, _) (KH agent phi psi) =
+isTrueReg (m, _) (KHI agent phi psi) =
     any (\aut -> checkCond1 m aut phiStates
               && checkCond2 m aut phiStates negPsiStates
     ) (getAgentAuts m agent)
   where
     phiStates    = truthSet m phi          -- [[phi]]
-    negPsiStates = truthSet m (Neg psi)    -- [[neg psi]]
+    negPsiStates = truthSet m (Not psi)    -- [[neg psi]]
 
 -- Infix alias for the satisfaction relation
 (||=) :: (RegLTSU, State) -> RegForm -> Bool
 (||=) = isTrueReg
+\end{code}
+
+\subsection{Parsing for $reg\text{-}\mathcal{L}^U_{KH}$}
+Formulas may be created in ghci using \texttt{parseForm}. The following inputs are accepted.
+\begin{itemize}
+    \item 'p' or 'P' followed by an integer n returns \texttt{P n}
+    \item '!' followed by a valid input p returns \texttt{Neg p}
+    \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Disj p q}
+    \item "KH" followed by index i valid inputs p and q returns \texttt{KH i p q}
+    \item "->" prefixed and followed by valid inputs p and q returns \texttt{Disj (Not p) q} (abbreviation)
+    \item '\verb|^|' prefixed and followed by valid inputs p and q returns \texttt{Not (Disj (Not p) (Not q))} (abbreviation)
+\end{itemize}
+
+\begin{code}
+pRegForm :: Parsec String () RegForm
+pRegForm = spaces *> pImpl where
+    -- Start parsing at implication level
+    -- Abbreviation: Implication (right-associative)
+    pImpl = chainr1 pDisj (spaces *> string "->" *> spaces >> return (Disj . Not))
+    
+    -- Disjunction (left-associative)
+    pDisj = chainl1 pConj (spaces *> oneOf "vV" *> spaces >> return Disj)
+    
+    -- Abbreviation: Conjunction (left-associative)
+    pConj = chainl1 pPrefix (spaces *> char '^' *> spaces >> return (\p q -> Not (Disj (Not p) (Not q))))
+
+    pPrefix = try pNeg 
+        <|> try pKH 
+        <|> pRemainder 
+    
+    -- Negation
+    pNeg = char '!' >> spaces >> Not <$> pPrefix
+
+    -- Knowing How for Agent
+    pKH = KHI <$> (string "KH" >> spaces *> pAgent) 
+        <*> (spaces *> pPrefix) 
+        <*> (spaces *> pPrefix)
+    pAgent = read <$> many1 digit
+    
+    pRemainder = pVar <|> between (char '(' *> spaces) (spaces *> char ')') pRegForm
+    pVar = spaces *> oneOf "pP" *> spaces *> (Prop . read <$> many1 digit) <* spaces
+    
+    
+
+parseRegForm :: String -> Either ParseError RegForm
+parseRegForm = parse (pRegForm <* eof) "input"
+
+evalRegForm :: (RegLTSU, State) -> String -> Bool
+evalRegForm (m, s) str =
+    case parseRegForm str of
+        Right f -> isTrueReg (m, s) f
+        Left _  -> error "Invalid formula"
+
 \end{code}

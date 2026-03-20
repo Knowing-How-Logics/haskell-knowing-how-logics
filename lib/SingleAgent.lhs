@@ -46,6 +46,8 @@ module SingleAgent where
 import Data.List (nub, delete)
 -- import NoneEmpty including its constructor :|
 import Data.List.NonEmpty (NonEmpty(..), toList)
+-- import parsec but hide State to avoid conflicts
+import Text.Parsec hiding (State)
 import Test.QuickCheck
 
 type Proposition = Int
@@ -181,6 +183,58 @@ isTrue (m, _) (KH f g) =
 (|=) = isTrue
 \end{code}
 
+\subsection{Parsing for $\mathcal{L}_{Kh}$}
+Formulas may be created in ghci using \texttt{parseForm}. The following inputs are accepted.
+\begin{itemize}
+    \item 'p' or 'P' followed by an integer n returns \texttt{P n}
+    \item 'T' returns \texttt{T}
+    \item '!' followed by a valid input p returns \texttt{Neg p}
+    \item '\verb|^|' prefixed and followed by valid inputs p and q returns \texttt{Conj p q}
+    \item "KH" followed by valid inputs p and q returns \texttt{KH p q}
+    \item "->" prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+    \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+\end{itemize}
+
+\begin{code}
+pForm :: Parsec String () Form
+pForm = spaces *> pImpl where
+    -- Start parsing at implication level
+    -- Abbreviation: Implication (right-associative)
+    pImpl = chainr1 pDisj (spaces *> string "->" *> spaces >> return (\p q -> Neg (Conj p (Neg q))))
+
+    -- Abbreviation: Disjunction (left-associative)
+    pDisj = chainl1 pConj (spaces *> oneOf "vV" *> spaces >> return (\p q -> Neg (Conj (Neg p) (Neg q))))
+    
+    -- Conjunction (left-associative)
+    pConj = chainl1 pPrefix (spaces *> char '^' *> spaces >> return Conj)
+
+    pPrefix = try pNeg <|> try pKH <|> pTrue <|> pRemainder 
+
+    -- Negation
+    pNeg = char '!' >> spaces >> Neg <$> pPrefix
+    
+    -- Knowing How
+    pKH = try (KH <$> (string "KH" >> spaces *> pPrefix) 
+        <*> (spaces *> pPrefix))
+
+    -- Truth-constant
+    pTrue = char 'T' >> return T
+    
+    pRemainder = pVar <|> between (char '(' *> spaces) (spaces *> char ')') pForm
+    pVar = spaces *> oneOf "pP" *> spaces *> (P . read <$> many1 digit) <* spaces
+
+
+parseForm :: String -> Either ParseError Form
+parseForm = parse (pForm <* eof) "input"
+
+evalForm :: (AbilityMap, State) -> String -> Bool
+evalForm (m, s) str =
+    case parseForm str of
+        Right f -> isTrue (m, s) f
+        Left _  -> error "Invalid formula"
+
+\end{code}
+
 \subsection{QuickCheck for $\mathcal{L}_{Kh}$}
 Finally, for this section we define the instances of Arbitrary for \texttt{Form} and \texttt{Arbitrary} respectively. 
 For \texttt{Form} we use the \texttt{sized} function to ensure that the generated formulas remain finite in size.\\
@@ -227,25 +281,15 @@ instance Arbitrary AbilityMap where
         
 \end{code}
 
-For now, we haven't had time yet to implement any `interactive' elements. But it is possible to try out semantics using the definitions by running \texttt{stack ghci}.
+It is possible to try out semantics by running \texttt{stack ghci}.
 For example:\\
 
 \begin{verbatim}
-ghci> import Test.QuickCheck
-ghci> import Data.List.NonEmpty (NonEmpty(..), toList)
-
 ghci> generate (arbitrary:: Gen AbilityMap)
-LTS {
-    states = 1 :| [2,3,4,5,6], 
-    transitions = [(3,[(5,2)]),(4,[(2,4)]),(1,[(5,4)])], 
-    valuation = [(1,[4,2]),(2,[]),(3,[1]),(4,[3]),(5,[4]),(6,[])]
-    }
-
-ghci> m = ...
-
-ghci> isTrue (m, 2::State) (KH (Conj (P 4) (Neg (P 2))) (P 3))
-True
-
-ghci> isTrue (m, 2::State) (KH (P 4) (P 1))
+LTS {states = 1 :| [2,3,4,5,6], ...
+ghci> m = LTS {states = 1 :| [2,3,4,5,6], ...
+ghci> isTrue (m, 2) (KH (P 4) (P 1))
 False
+ghci> evalForm (m, 2) "KH (p4 ^ !p2) p3"
+True
 \end{verbatim}
