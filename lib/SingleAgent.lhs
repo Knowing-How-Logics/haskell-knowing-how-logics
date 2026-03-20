@@ -363,11 +363,11 @@ ghci> m <- generate (generateLTS 5 3 2)
 ghci> m
 LTS {states = 1 :| [2,3,4,5], transitions = [(1,[(4,5),(4,2),(4,3),(5,1),(1,4),(2,2),(3,1),(4,4),(2,3)]),(2,[(4,3),(4,5),(2,5),(4,2),(5,4),(1,5)])], valuation = [(1,[1,3]),(2,[2,3]),(3,[1,2,3]),(4,[2,3]),(5,[2])]}
 
--- Check whether a formula holds at a given state
+-- Evaluate a formula at a state
 ghci> isTrue (m, 1) (KH (P 1) (P 2))
 True
 
--- Alternatively, use the parser for string input
+-- Using the parser
 ghci> evalForm (m, 1) "KH p1 p2"
 True
 \end{verbatim}

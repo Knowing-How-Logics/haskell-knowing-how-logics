@@ -622,7 +622,7 @@ generateAutomaton sts acts = do
         }
 \end{code}
 
-It is possible to generate models and test formulas interactively in \texttt{ghci}. For example:
+It is possible to generate models and test formulas interactively in \texttt{ghci}. For instance:
 
 \begin{verbatim}
 ghci> m <- generate (generateRegLTSU 5 3 2 2)
