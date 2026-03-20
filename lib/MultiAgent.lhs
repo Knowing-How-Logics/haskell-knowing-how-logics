@@ -602,13 +602,11 @@ generateAutomaton :: [State] -> [Action] -> Gen Automaton
 generateAutomaton sts acts = do
     let qs = sts
 
-    trans <- do
-        pairs <- sequence
-            [ do next <- sublistOf qs
-                 return ((q, a), next)
-            | q <- qs, a <- acts
-            ]
-        return pairs
+    trans <- sequence
+        [ do next <- sublistOf qs
+             return ((q, a), next)
+        | q <- qs, a <- acts
+        ]
 
     initStates <- sublistOf qs
     finalStates <- sublistOf qs
