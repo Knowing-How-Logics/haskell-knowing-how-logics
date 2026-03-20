@@ -103,6 +103,7 @@ import SingleAgent
   , Plan
   , State
   , Valuation
+  , Rel
   , Relations
   , executePlan
   , stronglyExecutableAt
@@ -112,6 +113,7 @@ import SingleAgent
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
+import Test.QuickCheck
 
 -- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
@@ -525,3 +527,115 @@ evalRegForm (m, s) str =
         Left _  -> error "Invalid formula"
 
 \end{code}
+
+
+
+\subsection{Model Generation with Parameters}
+
+To facilitate testing in the multi-agent setting, we provide a function that generates a random reg-LTS$^U$ model with a fixed number of states, propositions, actions, and agents. 
+
+The generated model includes:
+\begin{itemize}
+    \item a finite set of states $\{1,\dots,n\}$,
+    \item a set of actions $\{1,\dots,k\}$,
+    \item a valuation assigning each state a random subset of propositions $\{1,\dots,m\}$,
+    \item a family of action-labelled transitions,
+    \item and for each agent, a set of automata representing uncertainty over plans.
+\end{itemize}
+
+\begin{code}
+-- Generate a random reg-LTS^U model with parameters
+-- n: number of states
+-- m: number of propositions
+-- k: number of actions
+-- a: number of agents
+generateRegLTSU :: Int -> Int -> Int -> Int -> Gen RegLTSU
+generateRegLTSU n m k numAgents = do
+    let n' = max 1 n
+    let m' = max 0 m
+    let k' = max 0 k
+    let a' = max 1 numAgents
+
+    let sts = [1 .. n']
+    let acts = [1 .. fromIntegral k']
+    let props = [1 .. m']
+
+    -- Generate transitions
+    rels <- mapM (\_ -> generateRandomRel sts) acts
+
+    -- Generate valuations
+    vals <- mapM (generateRandomValuation props) sts
+
+    -- Generate uncertainty (automata per agent)
+    auts <- mapM (\_ -> generateAutomata sts acts) [1 .. a']
+
+    return $ RegLTSU sts (zip acts rels) (zip [1..] auts) vals
+
+
+-- Generate a random relation (same style as single-agent)
+generateRandomRel :: [State] -> Gen Rel
+generateRandomRel sts = do
+    numEdges <- choose (0, length sts * length sts)
+    edges <- vectorOf numEdges $ do
+        u <- elements sts
+        v <- elements sts
+        return (u, v)
+    return (nub edges)
+
+
+-- Generate valuation for a state
+generateRandomValuation :: [Proposition] -> State -> Gen (State, [Proposition])
+generateRandomValuation props s = do
+    ps <- sublistOf props
+    return (s, ps)
+
+
+-- Generate a list of automata for one agent
+generateAutomata :: [State] -> [Action] -> Gen [Automaton]
+generateAutomata sts acts = do
+    numAuts <- choose (1, 3)
+    vectorOf numAuts (generateAutomaton sts acts)
+
+
+-- Generate a simple random automaton
+generateAutomaton :: [State] -> [Action] -> Gen Automaton
+generateAutomaton sts acts = do
+    let qs = sts
+
+    trans <- do
+        pairs <- sequence
+            [ do next <- sublistOf qs
+                 return ((q, a), next)
+            | q <- qs, a <- acts
+            ]
+        return pairs
+
+    initStates <- sublistOf qs
+    finalStates <- sublistOf qs
+
+    return $ ATMN
+        { statesA = qs
+        , actionsA = acts
+        , transitionsA = trans
+        , initial = if null initStates then [head qs] else initStates
+        , final = if null finalStates then [head qs] else finalStates
+        }
+\end{code}
+
+It is possible to generate models and test formulas interactively in \texttt{ghci}. For example:
+
+\begin{verbatim}
+ghci> m <- generate (generateRegLTSU 5 3 2 2)
+ghci> m
+RegLTSU {statesM = [1,2,3,4,5], relationsM = [(1,[(1,1),(3,1),(4,2)]),(2,[(4,4),(5,4),(1,1),(1,2),(3,2),(1,3),(4,3),(5,3),(1,4),(5,1),(3,1),(2,3),(2,1),(1,5),(2,4),(4,2)])], uncertainty = [(1,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], transitionsA = [((1,1),[2,3]),((1,2),[1,3,5]),((2,1),[1,3,5]),((2,2),[1,2,3]),((3,1),[2,4]),((3,2),[3,4]),((4,1),[1,3]),((4,2),[2,4,5]),((5,1),[4]),((5,2),[3])], initial = [3], final = [3,5]}]),(2,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], transitionsA = [((1,1),[3,5]),((1,2),[1,2,5]),((2,1),[1,3,5]),((2,2),[1,3,4,5]),((3,1),[2,5]),((3,2),[5]),((4,1),[1,3]),((4,2),[3,4,5]),((5,1),[3]),((5,2),[3])], initial = [2,5], final = [1,3,5]}])], valuationM = [(1,[1,3]),(2,[1,3]),(3,[1]),(4,[1,2,3]),(5,[1,3])]}
+
+-- Evaluate a formula at a state
+ghci> isTrueReg (m, 1) (KHI 1 (Prop 1) (Prop 2))
+False
+
+-- Using the parser
+ghci> evalRegForm (m, 1) "KH1 p1 p2"
+False
+\end{verbatim}
+
+In the example above, \texttt{generateRegLTSU 5 3 2 2} produces a model with five states, three propositions, two actions, and two agents. Each agent is associated with a randomly generated set of automata representing its uncertainty over plans.
