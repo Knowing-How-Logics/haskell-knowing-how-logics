@@ -18,6 +18,9 @@ dependencies:
   - parsec
   - random
   - template-haskell
+  - scotty
+  - text
+  - wai-middleware-static
 
 library:
   source-dirs: lib

@@ -1,40 +1,29 @@
-
-
-
-\section{Wrapping it up in an exectuable}\label{sec:Main}
-
-We will now use the library form Section \ref{sec:Basics} in a program.
-
 \begin{code}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
-import Basics
+import Web.Scotty
+import Network.Wai.Middleware.Static
+import Data.Text.Lazy (pack)
+import SingleAgent (parseForm)
+import MultiAgent(parseRegForm)
 
 main :: IO ()
-main = do
-  putStrLn "Hello!"
-  print somenumbers
-  print (map funnyfunction somenumbers)
-  myrandomnumbers <- randomnumbers
-  print myrandomnumbers
-  print (map funnyfunction myrandomnumbers)
-  putStrLn "GoodBye"
+main = scotty 3000 $ do
+  middleware $ staticPolicy (noDots >-> addBase "static")
+
+  get "/" $ do
+    file "static/index.html"
+  
+  post "/haskell/parse-formula" $ do
+    formula <- formParam "formula" :: ActionM String
+    state   <- formParam "state"   :: ActionM String
+
+    let parseResult = case state of
+                "single"  -> show <$> parseForm formula
+                "multi"   -> show <$> parseRegForm formula
+                _ -> error "Invalid formula"
+
+    text $ pack $ either (\e -> "Parse error: " ++ show e) id parseResult
 \end{code}
-
-We can run this program with the commands:
-
-\begin{verbatim}
-stack build
-stack exec myprogram
-\end{verbatim}
-
-The output of the program is something like this:
-
-\begin{verbatim}
-Hello!
-[1,2,3,4,5,6,7,8,9,10]
-[100,100,300,300,500,500,700,700,900,900]
-[1,3,0,1,1,2,8,0,6,4]
-[100,300,42,100,100,100,700,42,500,300]
-GoodBye
-\end{verbatim}

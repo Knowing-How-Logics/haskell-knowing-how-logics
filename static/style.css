@@ -1,0 +1,140 @@
+* {
+    padding: 0;
+    margin: 0;
+    outline: none;
+    border: none;
+}
+
+a {
+    color: inherit;
+    text-decoration: inherit;
+}
+
+body {
+    background: #f2f2f2;
+    color: #2c3e50;
+    font-family: 'Inter', sans-serif;
+}
+
+.header {
+    border-bottom: 1px solid #e3e3e3;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 30px;
+}
+
+.page-title {
+    color: #3f5f72;
+    font-weight: bold;
+}
+
+.container {
+    width: 700px;
+    margin: 50px auto;
+    background: #f7f9fb;
+    padding: 30px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.container-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.agent-toggle {
+    margin-top: 10px;
+    border: 1px solid #e3e3e3;
+    border-radius: 20px;
+    font-size: 14px;
+    display: flex;
+    width: fit-content;
+}
+
+.agent-toggle>div {
+    /* margin: 5px; */
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 20px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.agent-toggle>div.active {
+    background-color: #50647a;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #7b7b7b;
+}
+
+textarea {
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    background: #eff3f5;
+    border-radius: 4px;
+    resize: none;
+    height: 40px;
+    box-sizing: border-box;
+}
+
+.syntax {
+    margin: 10px 0;
+}
+
+.syntax button {
+    margin: 3px;
+    padding: 10px 20px;
+    /* background: #eff3f5; */
+    background: #f7f9fb;
+    border-radius: 8px;
+    width: fit-content;
+    border: 1px solid #e3e3e3;
+}
+
+.main-btn {
+    margin-top: 15px;
+    padding: 12px;
+    background: #50647a;
+    color: white;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.main-btn:hover {
+    background-color: #455769;
+}
+
+.main-btn:disabled {
+    background-color: #a0a8b0;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.main-btn:disabled:hover {
+    background-color: #a0a8b0;
+}
+
+hr {
+    margin: 25px 0;
+    border-top: 1px solid #e3e3e3;
+}
+
+.output {
+    background: #eff3f5;
+    padding: 15px;
+    height: 80px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-family: monospace;
+    box-sizing: border-box;
+}

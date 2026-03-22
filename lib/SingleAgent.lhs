@@ -189,7 +189,7 @@ Formulas may be created in ghci using \texttt{parseForm}. The following inputs a
     \item 'p' or 'P' followed by an integer n returns \texttt{P n}
     \item 'T' returns \texttt{T}
     \item '!' followed by a valid input p returns \texttt{Neg p}
-    \item '\verb|^|' prefixed and followed by valid inputs p and q returns \texttt{Conj p q}
+    \item '&' prefixed and followed by valid inputs p and q returns \texttt{Conj p q}
     \item "KH" followed by valid inputs p and q returns \texttt{KH p q}
     \item "->" prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
     \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
@@ -206,7 +206,7 @@ pForm = spaces *> pImpl where
     pDisj = chainl1 pConj (spaces *> oneOf "vV" *> spaces >> return (\p q -> Neg (Conj (Neg p) (Neg q))))
     
     -- Conjunction (left-associative)
-    pConj = chainl1 pPrefix (spaces *> char '^' *> spaces >> return Conj)
+    pConj = chainl1 pPrefix (spaces *> char '&' *> spaces >> return Conj)
 
     pPrefix = try pNeg <|> try pKH <|> pTrue <|> pRemainder 
 
