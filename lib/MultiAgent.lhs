@@ -1,4 +1,5 @@
 {- HLINT ignore "Eta reduce" -}
+{-# LANGUAGE InstanceSigs #-}
 \section{$reg\text{-}\mathcal{L}^U_{KH}$ in Haskell}\label{sec:MultiAgent}
 
 In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan that is fail-proof, meaning that each partial execution must be completable. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur: the agent does not know which plan is adequate for the situation. All he can do is blindly apply a plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
@@ -528,9 +529,37 @@ evalRegForm (m, s) str =
 
 \end{code}
 
+\subsection{Random Generation for $reg\text{-}\mathcal{L}^U_{KH}$}
+
+To support property-based testing, we define generators for both formulas and models in the multi-agent setting.
+
+\subsubsection{Formula Generation.}
+
+Since the structure of formulas is independent of any particular model, the generator is defined separately from model generation. However, to avoid mismatches between formulas and models, we parameterize the generator by the number of agents. This ensures that all occurrences of the modality $KHI_i$ refer only to valid agent indices.
+
+\begin{code}
+-- Generate a random RegForm with bounded size and a fixed number of agents
+generateRegForm :: Int -> Int -> Gen RegForm
+generateRegForm numAgents = randomRegForm
+  where
+    numAgents' = max 1 numAgents
+
+    randomRegForm :: Int -> Gen RegForm
+    randomRegForm 0 = Prop <$> choose (1, 5)
+    randomRegForm n = oneof
+        [ Prop <$> choose (1, 5)
+        , Not <$> randomRegForm (n - 1)
+        , Disj <$> randomRegForm (n `div` 2) <*> randomRegForm (n `div` 2)
+        , KHI <$> choose (1, numAgents')
+              <*> randomRegForm (n `div` 2)
+              <*> randomRegForm (n `div` 2)
+        ]
+\end{code}
 
 
-\subsection{Model Generation with Parameters}
+
+
+\subsubsection{Model Generation with Parameters}
 
 To facilitate testing in the multi-agent setting, we provide a function that generates a random reg-LTS$^U$ model with a fixed number of states, propositions, actions, and agents. 
 
