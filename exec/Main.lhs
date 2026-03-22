@@ -1,3 +1,16 @@
+\section{Web Interface}\label{sec:WebInterface}
+
+In this section we introduce a web-application to demo our code.
+The web=app is consistent of a single page allowing users to do the following:
+\begin{itemize}
+    \item Parse single or multi agent formulas to our Haskell syntax
+\end{itemize}
+
+Our implementation is extremly simple. We use a simple lightweight RESTful framework called scotty. 
+Plain HTML and CSS is used for layout and styling. 
+We serve a single plain JavaScript script to connect the UI to our Haskell code. 
+
+
 \begin{code}
 {-# LANGUAGE OverloadedStrings #-}
 
