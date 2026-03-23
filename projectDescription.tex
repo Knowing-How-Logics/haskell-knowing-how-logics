@@ -8,20 +8,8 @@ The simplest version of \textit{knowing how}, $\mathcal{L}_{Kh}$, based on the p
 This logic captures the agent's ability to guarantee the completion of a task under a given condition. 
 This idea is ideal in a sense, since even though the agent manages to do something under a condition, it does not imply the agent really know how. 
 For example, one can win a lottery does not imply one can guarantee how to win. The uncertainty is involved in this case. 
-Therefore, another logic may be prefered, $\mathcal{L}^U_{Kh}$. In this logic, an agent may have \textit{indistinguishability} among several plans they might take, a critical concept in epistemic logic. 
+Therefore, another logic may be preferred, $\mathcal{L}^U_{Kh}$. In this logic, an agent may have \textit{indistinguishability} among several plans they might take, a critical concept in epistemic logic. 
 Indistinguishable plans form equivalence classes, partitioning the set of available plans. Intuitively, plans considered identical by the agent are placed in the same class. 
 Furthermore, this logic involves multi-agents, as opposed to a single agent. Finally, a new logic, $reg\text{-}\mathcal{L}^U_{Kh}$, a variation of the second version, 
 introduces equivalence classes that are defined in terms of finite automatons. \par
-In this project, we aim to model this family of knowing-how logics. 
-We also intend to implement the model checking for the logic $reg\text{-}\mathcal{L}^U_{Kh}$ defined in \cite{Demri2023}.
-
-Our project goals are defined as follows.
-
-\begin{itemize}
-    \item Get familiar with the family of knowing-how logics;
-    \item Implement the the family of knowing-how logics (syntax, semantics) in Haskell;
-    \item Implement the explicit model checker for the basic knowing how logic;
-    \item Implement model checking problem for the logic $reg\text{-}\mathcal{L}^U_{Kh}$ defined in \cite{Demri2023};
-    \item (Optional) Implement testing for model checking.
-    \item (Optional) Implement a user-interface or at the very least an executable (using parsing) for model checking.
-\end{itemize}
+In this project, we modelled a family of knowing-how logics and implemented model checkers for both $\mathcal{L}_{Kh}$ and $reg\text{-}\mathcal{L}^U_{Kh}$. The checker for $\mathcal{L}_{Kh}$ is an explicit procedure with bounded plan length, while the checker for $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms described in \cite{Demri2023}. In addition, we implemented parsers for both logics and used QuickCheck to test several basic properties of the resulting systems. Together, these form the main contributions of the project.

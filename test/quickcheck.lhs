@@ -183,16 +183,18 @@ Single-Agent Logic L_Kh
   KH is global: truth does not vary between states 
     +++ OK, passed 100 tests.
 Multi-Agent Logic reg-L^U_KH
-  Vacuous Precondition: knowing how from contradiction holds vacuously 
+  Vacuous Precondition: 
+  knowing how from contradiction holds vacuously 
     +++ OK, passed 100 tests.
   KH_i is global: agent ability is a model-wide property
     +++ OK, passed 100 tests.
   Intersection checking is symmetric: 
-  L(A1) intersect L(A2) is non-empty iff L(A2) intersect L(A1) is non-empty
+  L(A1) intersect L(A2) is non-empty 
+  iff L(A2) intersect L(A1) is non-empty
 
 Finished in 5.2967 seconds
 7 examples, 0 failures
 \end{verbatim}
 
 
-Overall, these results provide further evidence that the implementation correctly captures central semantic features of knowing-how logics.
+Overall, these results provide evidence that the implementation captures several expected semantic properties.

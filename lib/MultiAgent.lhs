@@ -4,7 +4,7 @@ In the framework of \textit{basic knowing how} we introduced above, an agent pos
 
 We now introduce a new logic of \textit{knowing how} for a multi-agent setting defined in \cite{Demri2023}, extending the LTS with a notion of epistemic indistinguishability between plans. The uncertainty of an agent is encoded by equivalence classes of plans, and each such class is represented by a finite automaton. More precisely, each equivalence class of indistinguishable plans is represented by the language recognised by a finite automaton.\par
 
-In Theorem 2 from \cite{Demri2023}, it is shown that the model-checking problem for this logic is in PTIME. The proof relies on reducing both conditions of the $Kh$-modality to graph reachability checks. In this section, we provide a concrete implementation of this algorithm in Haskell, closely following the constructions from the paper.\par
+In Theorem 2 from \cite{Demri2023}, it is shown that the model-checking problem for this logic is in PTIME. The proof relies on reducing both conditions of the $Kh_i$-modality to graph reachability checks. In this section, we provide a concrete implementation of this algorithm in Haskell, closely following the constructions from the paper.\par
 
 
 \subsection{Preliminaries}
