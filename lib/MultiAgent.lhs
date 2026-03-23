@@ -483,7 +483,7 @@ Formulas may be created in ghci using \texttt{parseRegForm}. The following input
     \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Disj p q}
     \item "KH" followed by index i valid inputs p and q returns \texttt{KH i p q}
     \item "->" prefixed and followed by valid inputs p and q returns \texttt{Disj (Not p) q} (abbreviation)
-    \item '&' prefixed and followed by valid inputs p and q returns \texttt{Not (Disj (Not p) (Not q))} (abbreviation)
+    \item '\verb|&|' prefixed and followed by valid inputs p and q returns \texttt{Not (Disj (Not p) (Not q))} (abbreviation)
 \end{itemize}
 
 \begin{code}

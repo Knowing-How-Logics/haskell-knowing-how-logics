@@ -18,6 +18,11 @@ body {
 
 .header {
     border-bottom: 1px solid #e3e3e3;
+    background: #f2f2f2;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
 }
 
 .header-content {
@@ -26,27 +31,18 @@ body {
     padding: 10px 30px;
 }
 
+.header-content>div {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
 .page-title {
     color: #3f5f72;
     font-weight: bold;
 }
 
-.container {
-    width: 700px;
-    margin: 50px auto;
-    background: #f7f9fb;
-    padding: 30px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.container-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
 .agent-toggle {
-    margin-top: 10px;
     border: 1px solid #e3e3e3;
     border-radius: 20px;
     font-size: 14px;
@@ -55,7 +51,6 @@ body {
 }
 
 .agent-toggle>div {
-    /* margin: 5px; */
     padding: 6px 12px;
     cursor: pointer;
     border-radius: 20px;
@@ -66,6 +61,18 @@ body {
     background-color: #50647a;
     color: white;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.container {
+    width: 700px;
+    margin: 50px auto;
+    background: #f7f9fb;
+    padding: 30px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+#fst-container {
+    margin-top: 100px;
 }
 
 label {
@@ -99,7 +106,7 @@ textarea {
     border: 1px solid #e3e3e3;
 }
 
-.main-btn {
+.primary-btn {
     margin-top: 15px;
     padding: 12px;
     background: #50647a;
@@ -110,18 +117,31 @@ textarea {
     transition: background 0.2s ease;
 }
 
-.main-btn:hover {
+.primary-btn:hover {
     background-color: #455769;
 }
 
-.main-btn:disabled {
-    background-color: #a0a8b0;
+.primary-btn:disabled {
     cursor: not-allowed;
     opacity: 0.6;
 }
 
-.main-btn:disabled:hover {
-    background-color: #a0a8b0;
+.secondary-btn {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    background: #f7f9fb;
+    color: #425467;
+    border: 1px solid #425467;
+}
+
+.secondary-btn:disabled {
+    border: 1px solid #a0a8b0;
+    color: #a0a8b0;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
 hr {
@@ -132,9 +152,38 @@ hr {
 .output {
     background: #eff3f5;
     padding: 15px;
-    height: 80px;
     border-radius: 4px;
     margin-top: 10px;
     font-family: monospace;
     box-sizing: border-box;
+    min-height: 80px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 10px;
+}
+
+.grid>div {
+    display: flex;
+    flex-direction: column;
+}
+
+.grid label {
+    justify-self: start;
+}
+
+.model-input {
+    margin: 10px 0;
+    padding: 15px;
+    background: #eff3f5;
+    border-radius: 4px;
+}
+
+.model-input:invalid {
+    border: 2px solid red;
 }
