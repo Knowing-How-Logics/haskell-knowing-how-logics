@@ -161,6 +161,23 @@ hr {
     word-break: break-word;
 }
 
+ul {
+    list-style: none;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+ul > li {
+    padding: 5px 0;
+    font-size: 12px;
+    border-bottom: 1px solid #e3e3e3;
+}
+
+ul > li:first-child {
+    padding-top: 20px;
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
