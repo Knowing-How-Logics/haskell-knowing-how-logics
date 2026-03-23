@@ -1,7 +1,7 @@
 \documentclass[12pt,a4paper]{article}
 \input{latexmacros.tex}
 
-\title{Model Checking of Knowing How Logics}
+\title{Model Checking for Knowing-how Logics}
 \author{Rens Doodeman, Ziqi Wang, and Zixuan Chen}
 \date{\today}
 \hypersetup{pdfauthor={Me}, pdftitle={My Report}}
@@ -11,10 +11,10 @@
 \maketitle
 
 \begin{abstract}
-TODO!
+We implement model checkers in Haskell for both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{KH}$. 
+For both logics, we validate the implementation by means of a range of tests using QuickCheck. 
+In addition, to improve usability, we provide a parser for each logic.
 \end{abstract}
-
-\vfill
 
 \tableofcontents
 
@@ -23,7 +23,7 @@ TODO!
 % We include one file for each section. The ones containing code should
 % be called something.lhs and also mentioned in the .cabal file.
 
-\input{Howto.tex}
+%\input{Howto.tex}
 
 \input{ProjectDescription.tex}
 

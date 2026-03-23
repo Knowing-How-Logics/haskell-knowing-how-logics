@@ -1,6 +1,4 @@
-{- HLINT ignore "Eta reduce" -}
-{-# LANGUAGE InstanceSigs #-}
-\section{$reg\text{-}\mathcal{L}^U_{KH}$ in Haskell}\label{sec:MultiAgent}
+\section{Uncertainty-based Knowing-how logic with Regularity Constraints $reg\text{-}\mathcal{L}^U_{KH}$}\label{sec:MultiAgent}
 
 In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan that is fail-proof, meaning that each partial execution must be completable. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur: the agent does not know which plan is adequate for the situation. All he can do is blindly apply a plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
 
@@ -18,7 +16,7 @@ Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \i
 \]
 \end{definition}
 
-We first introduce the automadta used to represent classes of plans.
+We first introduce the automata used to represent classes of plans.
 
 \begin{definition}[Automaton]
 A non-deterministic finite automaton is a tuple $\mathcal{A} = (Q, Act, \delta, I, F)$, where:
@@ -85,15 +83,15 @@ Finally, we can state the semantics of the language.
 Let $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$ be a finite reg-LTS$^U$, and $s \in S$. The satisfaction relation $\models$ is defined as:
 
 \begin{tabularx}{\textwidth}{lclX} 
-$\mathcal{S}, s \models p$ & \textit{iff} & & $p \in V(s)$ \\
-$\mathcal{S}, s \models \neg \varphi$ & \textit{iff} & & $\mathcal{S}, s \not\models \varphi$ \\
-$\mathcal{S}, w \models \psi \vee \varphi$ & \textit{iff} & & $\mathcal{S}, w \models \psi \text{ or } \mathcal{S}, w \models \varphi$ \\
-$\mathcal{S}, s \models Kh_i(\psi, \varphi)$ & \textit{iff} & & there is a finite automaton $\mathcal{A}\in U_i$, such that (1) $[\![\psi]\!]^{\mathcal{S}}\subseteq SE(L(\mathcal{A}))$ and (2) for every $t\in [\![\psi]\!]^\mathcal{S}$, $R_{L(\mathcal{A})}(t) \subseteq [\![\varphi]\!]^\mathcal{S}$,\\
+$\mathcal{S}, s \Vdash p$ & \textit{iff} & & $p \in V(s)$ \\
+$\mathcal{S}, s \Vdash \neg \varphi$ & \textit{iff} & & $\mathcal{S}, s \not\Vdash \varphi$ \\
+$\mathcal{S}, s \Vdash \psi \vee \varphi$ & \textit{iff} & & $\mathcal{S}, s \Vdash \psi \text{ or } \mathcal{S}, s \Vdash \varphi$ \\
+$\mathcal{S}, s \Vdash Kh_i(\psi, \varphi)$ & \textit{iff} & & there is a finite automaton $\mathcal{A}\in U_i$, such that (1) $[\![\psi]\!]^{\mathcal{S}}\subseteq SE(L(\mathcal{A}))$ and (2) for every $t\in [\![\psi]\!]^\mathcal{S}$, $R_{L(\mathcal{A})}(t) \subseteq [\![\varphi]\!]^\mathcal{S}$,\\
 \end{tabularx}
-where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, w \models \psi\}$ is the set of all states satisfying $\psi$. 
+where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, s \Vdash \psi\}$ is the set of all states satisfying $\psi$. 
 \end{definition}
-The $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true".
-\subsection{Basic notions in Haskell}
+The $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true". $Kh_i $ is also a global modality.
+\subsection{Haskell Representation}
 The syntax is modelled following Definition~4.1.\\
 \begin{code}
 module MultiAgent where
@@ -531,34 +529,6 @@ evalRegForm (m, s) str =
 
 \subsection{Random Generation for $reg\text{-}\mathcal{L}^U_{KH}$}
 
-To support property-based testing, we define generators for both formulas and models in the multi-agent setting.
-
-\subsubsection{Formula Generation.}
-
-Since the structure of formulas is independent of any particular model, the generator is defined separately from model generation. However, to avoid mismatches between formulas and models, we parameterize the generator by the number of agents. This ensures that all occurrences of the modality $KHI_i$ refer only to valid agent indices.
-
-\begin{code}
--- Generate a random RegForm with bounded size and a fixed number of agents
-generateRegForm :: Int -> Int -> Gen RegForm
-generateRegForm numAgents = randomRegForm
-  where
-    numAgents' = max 1 numAgents
-
-    randomRegForm :: Int -> Gen RegForm
-    randomRegForm 0 = Prop <$> choose (1, 5)
-    randomRegForm n = oneof
-        [ Prop <$> choose (1, 5)
-        , Not <$> randomRegForm (n - 1)
-        , Disj <$> randomRegForm (n `div` 2) <*> randomRegForm (n `div` 2)
-        , KHI <$> choose (1, numAgents')
-              <*> randomRegForm (n `div` 2)
-              <*> randomRegForm (n `div` 2)
-        ]
-\end{code}
-
-
-
-
 \subsubsection{Model Generation with Parameters}
 
 To facilitate testing in the multi-agent setting, we provide a function that generates a random reg-LTS$^U$ model with a fixed number of states, propositions, actions, and agents. 
@@ -654,7 +624,23 @@ It is possible to generate models and test formulas interactively in \texttt{ghc
 \begin{verbatim}
 ghci> m <- generate (generateRegLTSU 5 3 2 2)
 ghci> m
-RegLTSU {statesM = [1,2,3,4,5], relationsM = [(1,[(1,1),(3,1),(4,2)]),(2,[(4,4),(5,4),(1,1),(1,2),(3,2),(1,3),(4,3),(5,3),(1,4),(5,1),(3,1),(2,3),(2,1),(1,5),(2,4),(4,2)])], uncertainty = [(1,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], transitionsA = [((1,1),[2,3]),((1,2),[1,3,5]),((2,1),[1,3,5]),((2,2),[1,2,3]),((3,1),[2,4]),((3,2),[3,4]),((4,1),[1,3]),((4,2),[2,4,5]),((5,1),[4]),((5,2),[3])], initial = [3], final = [3,5]}]),(2,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], transitionsA = [((1,1),[3,5]),((1,2),[1,2,5]),((2,1),[1,3,5]),((2,2),[1,3,4,5]),((3,1),[2,5]),((3,2),[5]),((4,1),[1,3]),((4,2),[3,4,5]),((5,1),[3]),((5,2),[3])], initial = [2,5], final = [1,3,5]}])], valuationM = [(1,[1,3]),(2,[1,3]),(3,[1]),(4,[1,2,3]),(5,[1,3])]}
+RegLTSU {statesM = [1,2,3,4,5], 
+relationsM = [(1,[(1,1),(3,1),(4,2)]),
+(2,[(4,4),(5,4),(1,1),(1,2),(3,2),
+(1,3),(4,3),(5,3),(1,4),(5,1),(3,1),
+(2,3),(2,1),(1,5),(2,4),(4,2)])], 
+uncertainty = [(1,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], 
+transitionsA = [((1,1),[2,3]),((1,2),[1,3,5]),((2,1),[1,3,5]),
+((2,2),[1,2,3]),((3,1),[2,4]),((3,2),[3,4]),
+((4,1),[1,3]),((4,2),[2,4,5]),((5,1),[4]),((5,2),[3])], 
+initial = [3], final = [3,5]}]),
+(2,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], 
+transitionsA = [((1,1),[3,5]),
+((1,2),[1,2,5]),((2,1),[1,3,5]),((2,2),[1,3,4,5]),
+((3,1),[2,5]),((3,2),[5]),((4,1),[1,3]),
+((4,2),[3,4,5]),((5,1),[3]),((5,2),[3])], 
+initial = [2,5], final = [1,3,5]}])], 
+valuationM = [(1,[1,3]),(2,[1,3]),(3,[1]),(4,[1,2,3]),(5,[1,3])]}
 
 -- Evaluate a formula at a state
 ghci> isTrueReg (m, 1) (KHI 1 (Prop 1) (Prop 2))
@@ -666,3 +652,28 @@ False
 \end{verbatim}
 
 In the example above, \texttt{generateRegLTSU 5 3 2 2} produces a model with five states, three propositions, two actions, and two agents. Each agent is associated with a randomly generated set of automata representing its uncertainty over plans.
+
+\subsubsection{Arbitrary Instances for QuickCheck}
+
+To support property-based testing, we define generators for both formulas and models in the multi-agent setting.
+
+Since the structure of formulas is independent of any particular model, the generator is defined separately from model generation. However, to avoid mismatches between formulas and models, we parameterize the generator by the number of agents. This ensures that all occurrences of the modality $Kh_i$ refer only to valid agent indices.\\
+
+\begin{code}
+-- Generate a random RegForm with bounded size and a fixed number of agents
+generateRegForm :: Int -> Int -> Gen RegForm
+generateRegForm numAgents = randomRegForm
+  where
+    numAgents' = max 1 numAgents
+
+    randomRegForm :: Int -> Gen RegForm
+    randomRegForm 0 = Prop <$> choose (1, 5)
+    randomRegForm n = oneof
+        [ Prop <$> choose (1, 5)
+        , Not <$> randomRegForm (n - 1)
+        , Disj <$> randomRegForm (n `div` 2) <*> randomRegForm (n `div` 2)
+        , KHI <$> choose (1, numAgents')
+              <*> randomRegForm (n `div` 2)
+              <*> randomRegForm (n `div` 2)
+        ]
+\end{code}
