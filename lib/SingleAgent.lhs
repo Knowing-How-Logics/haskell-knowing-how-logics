@@ -1,4 +1,4 @@
-\section{Basic Knowing How Logic $\mathcal{L}_{Kh}$ in Haskell}\label{sec:SingleAgent}
+\section{Basic Knowing How Logic $\mathcal{L}_{Kh}$}\label{sec:SingleAgent}
 In this section we model the language of \textit{basic knowing how} $\mathcal{L}_{Kh}$ introduced in \cite{Wang2015}. This logic captures the ability of an agent to achieve a goal $\varphi$ given a precondition $\psi$, by requiring the existence of a plan that is strongly executable and goal-reaching from every state satisfying $\psi$. The underlying models are labelled transition systems, where each relation corresponds to an action the agent can perform.\par
 
 We implement an explicit model-checker for this logic with a bounded plan depth, along with QuickCheck generators for random testing of the semantics.
@@ -12,11 +12,11 @@ where $p \in Prop$.
 \end{definition}
 
 \begin{definition}[LTS]
-A labelled transition system (LTS) is a tuple $\mathcal{M} = (S, (R_a)_{a \in Act}, V)$, where:
+A \textit{labelled transition system} (LTS) is a tuple $\mathcal{M} = (S, (R_a)_{a \in Act}, V)$, where:
 \begin{itemize}
-    \item $S$ is a non-empty set of states,
-    \item $(R_a)_{a \in Act}$ is a family of binary relations on $S$, each labelled by an action $a \in Act$,
-    \item $V: S \to 2^{Prop}$ is a valuation function.
+    \item $S$ is a non-empty set of \textit{states},
+    \item $(R_a)_{a \in Act}$ is a family of \textit{binary relations} on $S$, each labelled by an \textit{action} $a \in Act$,
+    \item $V: S \to 2^{Prop}$ is a \textit{valuation function}.
 \end{itemize}
 
 We write $s \xrightarrow{a} t$ if $(s,t) \in R_a$. For a plan $\sigma = a_1 \ldots a_n \in Act^*$, we write $s \xrightarrow{\sigma} t$ if there exist $s_1, \ldots, s_{n-1}$ such that $s \xrightarrow{a_1} s_1 \xrightarrow{a_2} \cdots \xrightarrow{a_n} t$. A plan $\sigma = a_1 \ldots a_n$ is \textit{strongly executable} at $s$ iff for every $0 \leq k < n$ and every $t$ such that $s \xrightarrow{\sigma_k} t$, the state $t$ has at least one $a_{k+1}$-successor.
@@ -26,19 +26,18 @@ We write $s \xrightarrow{a} t$ if $(s,t) \in R_a$. For a plan $\sigma = a_1 \ldo
 Let $\mathcal{M} $ be an LTS, and $s$ be a state.
 
 \begin{tabularx}{\textwidth}{lclX}
-$\mathcal{M}, s \models \top$ & $\Leftrightarrow$& & \textit{always} \\
-$\mathcal{M}, s \models p$ & $\Leftrightarrow$ & & $p \in V(s)$ \\
-$\mathcal{M}, s \models \neg\varphi$ & $\Leftrightarrow$ & & $\mathcal{M}, s \not\models \varphi$ \\
-$\mathcal{M}, s \models \varphi \land \psi$ & $\Leftrightarrow$ & & $\mathcal{M}, s \models \varphi$ and $\mathcal{M}, s \models \psi$ \\
-$\mathcal{M}, s \models Kh(\psi, \varphi)$ & $\Leftrightarrow$ & & there exists a $\sigma \in Act^*$ such that for all $s'$ such that $\mathcal{M}, s' \models \psi$: \\
+$\mathcal{M}, s \models \top$ & \textit{iff}& & \textit{always} \\
+$\mathcal{M}, s \models p$ & \textit{iff} & & $p \in V(s)$ \\
+$\mathcal{M}, s \models \neg\varphi$ & \textit{iff} & & $\mathcal{M}, s \not\models \varphi$ \\
+$\mathcal{M}, s \models \varphi \land \psi$ & \textit{iff} & & $\mathcal{M}, s \models \varphi$ and $\mathcal{M}, s \models \psi$ \\
+$\mathcal{M}, s \models Kh(\psi, \varphi)$ & \textit{iff} & & there exists a $\sigma \in Act^*$ such that for all $s'$ such that $\mathcal{M}, s' \models \psi$: \\
 & & & $\sigma$ is strongly executable at $s'$ and for all $t$ such that $s' \xrightarrow{\sigma} t$, $\mathcal{M}, t \models \varphi$ \\
 \end{tabularx}
 \end{definition}
 
-The $Kh(\psi,\varphi)$ can be interpreted as "the agent knows how to achieve $\varphi$ given $\psi$". 
-The abbreviations $\bot$, $\lor$, $\to$, and the universal modality $U_\varphi:=Kh(\lnot\varphi, \bot)$ have been left out for simplicity. 
+The $Kh(\psi,\varphi)$ can be interpreted as "the agent knows how to achieve $\varphi$ given $\psi$". Notice that the $Kh$ is a global modality. Namely, either it holds for all states, or none of them.
 
-\subsection{Basic notions in Haskell}
+\subsection{Haskell Representation}
 The syntax is modelled following Definition~3.1.\\
 \begin{code}
 module SingleAgent where
@@ -184,15 +183,16 @@ isTrue (m, _) (KH f g) =
 \end{code}
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
-Formulas may be created in ghci using \texttt{parseForm}. The following inputs are accepted.
+Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following inputs are accepted:
+
 \begin{itemize}
-    \item 'p' or 'P' followed by an integer n returns \texttt{P n}
-    \item 'T' returns \texttt{T}
-    \item '!' followed by a valid input p returns \texttt{Neg p}
-    \item '\verb|&|' prefixed and followed by valid inputs p and q returns \texttt{Conj p q}
-    \item "KH" followed by valid inputs p and q returns \texttt{KH p q}
-    \item "->" prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
-    \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+    \item \texttt{p} or \texttt{P} followed by an integer $n$ returns \texttt{P n}
+    \item \texttt{T} returns \texttt{T}
+    \item \texttt{!} followed by a valid input $p$ returns \texttt{Neg p}
+    \item \texttt{\&} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Conj p q}
+    \item \texttt{KH} followed by valid inputs $p$ and $q$ returns \texttt{KH p q}
+    \item \texttt{->} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+    \item \texttt{v} or \texttt{V} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
 \end{itemize}
 
 \begin{code}
@@ -235,66 +235,9 @@ evalForm (m, s) str =
 
 \end{code}
 
-\subsection{QuickCheck for $\mathcal{L}_{Kh}$}
-Finally, for this section we define the instances of Arbitrary for \texttt{Form} and \texttt{Arbitrary} respectively. 
-For \texttt{Form} we use the \texttt{sized} function to ensure that the generated formulas remain finite in size.\\
+\subsection{Random Generation for $\mathcal{L}_{Kh}$}
 
-\begin{code}
-instance Arbitrary Form where
-    arbitrary = sized randomForm where
-        -- Helper function to generate random formulas of a given size
-        randomForm :: Int -> Gen Form
-        randomForm 0 = oneof [P <$> choose (1, 5), return T]
-        randomForm n = oneof 
-            [ P <$> choose (1, 5)
-            , return T
-            , Neg <$> randomForm (n - 1)
-            , Conj <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
-            , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
-            ]
-
-instance Arbitrary AbilityMap where
-    arbitrary = do
-        n <- choose (1,10)
-        let sts = [1..n] -- n states
-        rels <- generateRelations n sts
-        vals <- mapM generateValuation sts
-        return $ LTS (head sts :| tail sts) rels vals 
-        where
-            generateRelations n sts
-                | n == 1 = return []
-                | otherwise = do
-                    m <- choose (1,n) -- decide how many actions to generate
-                    actions <- vectorOf m (choose (1,5))
-                    mapM (generateRel sts) actions
-
-             -- for each action a, generate a relation labeled by a
-            generateRel sts a = do
-                x <- elements sts
-                y <- elements (delete x sts) -- avoid loops
-                return (a, [(x,y)])
-            
-            -- for each state s, generate a list of propositions
-            generateValuation s = do
-                props <- listOf (choose (1,5))
-                return (s, nub props)
-        
-\end{code}
-
-It is possible to try out semantics by running \texttt{stack ghci}.
-For example:\\
-
-\begin{verbatim}
-ghci> generate (arbitrary:: Gen AbilityMap)
-LTS {states = 1 :| [2,3,4,5,6], ...
-ghci> m = LTS {states = 1 :| [2,3,4,5,6], ...
-ghci> isTrue (m, 2) (KH (P 4) (P 1))
-False
-ghci> evalForm (m, 2) "KH (p4 ^ !p2) p3"
-True
-\end{verbatim}
-
-\subsection{LTS Generation with Parameters}\label{sec:LTSGen}
+\subsubsection{Model Generation with Parameters}\label{sec:LTSGen}
 To facilitate testing with models of specific sizes, we implement a function that generates an \textit{AbilityMap} from a fixed number of states, propositions, and actions. 
 
 The generated model includes:
@@ -361,7 +304,10 @@ It is possible to generate concrete models and test formulas interactively in \t
 \begin{verbatim}
 ghci> m <- generate (generateLTS 5 3 2)
 ghci> m
-LTS {states = 1 :| [2,3,4,5], transitions = [(1,[(4,5),(4,2),(4,3),(5,1),(1,4),(2,2),(3,1),(4,4),(2,3)]),(2,[(4,3),(4,5),(2,5),(4,2),(5,4),(1,5)])], valuation = [(1,[1,3]),(2,[2,3]),(3,[1,2,3]),(4,[2,3]),(5,[2])]}
+LTS {states = 1 :| [2,3,4,5], 
+transitions = [(1,[(4,5),(4,2),(4,3),(5,1),(1,4),(2,2),
+(3,1),(4,4),(2,3)]), (2,[(4,3),(4,5),(2,5),(4,2),(5,4),(1,5)])], 
+valuation = [(1,[1,3]),(2,[2,3]),(3,[1,2,3]),(4,[2,3]),(5,[2])]}
 
 -- Evaluate a formula at a state
 ghci> isTrue (m, 1) (KH (P 1) (P 2))
@@ -373,3 +319,62 @@ True
 \end{verbatim}
 
 In the example above, \texttt{generateLTS 5 3 2} produces a random LTS with five states, three proposition letters, and two actions. The function \texttt{isTrue} can then be used to evaluate formulas directly, while \texttt{evalForm} allows testing formulas given as strings.
+
+\subsubsection{Arbitrary Instances for QuickCheck}
+Finally, for this section we define the instances of Arbitrary for \texttt{Form} and \texttt{Arbitrary} respectively. 
+For \texttt{Form} we use the \texttt{sized} function to ensure that the generated formulas remain finite in size.\\
+
+\begin{code}
+instance Arbitrary Form where
+    arbitrary = sized randomForm where
+        -- Helper function to generate random formulas of a given size
+        randomForm :: Int -> Gen Form
+        randomForm 0 = oneof [P <$> choose (1, 5), return T]
+        randomForm n = oneof 
+            [ P <$> choose (1, 5)
+            , return T
+            , Neg <$> randomForm (n - 1)
+            , Conj <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
+            , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
+            ]
+
+instance Arbitrary AbilityMap where
+    arbitrary = do
+        n <- choose (1,10)
+        let sts = [1..n] -- n states
+        rels <- generateRelations n sts
+        vals <- mapM generateValuation sts
+        return $ LTS (head sts :| tail sts) rels vals 
+        where
+            generateRelations n sts
+                | n == 1 = return []
+                | otherwise = do
+                    m <- choose (1,n) -- decide how many actions to generate
+                    actions <- vectorOf m (choose (1,5))
+                    mapM (generateRel sts) actions
+
+             -- for each action a, generate a relation labeled by a
+            generateRel sts a = do
+                x <- elements sts
+                y <- elements (delete x sts) -- avoid loops
+                return (a, [(x,y)])
+            
+            -- for each state s, generate a list of propositions
+            generateValuation s = do
+                props <- listOf (choose (1,5))
+                return (s, nub props)
+        
+\end{code}
+
+It is possible to try out semantics by running \texttt{stack ghci}.
+For example:\\
+
+\begin{verbatim}
+ghci> generate (arbitrary:: Gen AbilityMap)
+LTS {states = 1 :| [2,3,4,5,6], ...
+ghci> m = LTS {states = 1 :| [2,3,4,5,6], ...
+ghci> isTrue (m, 2) (KH (P 4) (P 1))
+False
+ghci> evalForm (m, 2) "KH (p4 ^ !p2) p3"
+True
+\end{verbatim}
