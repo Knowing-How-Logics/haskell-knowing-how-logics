@@ -475,14 +475,15 @@ isTrueReg (m, _) (KHI agent phi psi) =
 \end{code}
 
 \subsection{Parsing for $reg\text{-}\mathcal{L}^U_{Kh}$}
-Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following inputs are accepted.
+
+Formulas may be created in \texttt{ghci} using \texttt{parseRegForm}. The following inputs are accepted.
 \begin{itemize}
-    \item \texttt{p} or \texttt{P} followed by an integer \(n\) returns \texttt{P n}
-    \item \texttt{!} followed by a valid input \(p\) returns \texttt{Neg p}
-    \item \texttt{v} or \texttt{V} prefixed to valid inputs \(p\) and \(q\) returns \texttt{Disj p q}
-    \item \texttt{KH} followed by an index \(i\) and valid inputs \(p\) and \(q\) returns \texttt{KH i p q}
-    \item \texttt{->} prefixed to valid inputs \(p\) and \(q\) returns \texttt{Disj (Not p) q} (abbreviation)
-    \item \texttt{\^{}} prefixed to valid inputs \(p\) and \(q\) returns \texttt{Not (Disj (Not p) (Not q))} (abbreviation)
+    \item \texttt{p} or \texttt{P} followed by an integer \(n\) returns \texttt{Prop n}
+    \item \texttt{!p} returns \texttt{Not p}
+    \item \texttt{p v q} or \texttt{p V q} returns \texttt{Disj p q}
+    \item \texttt{KH\textit{i} p q} returns \texttt{KHI i p q}, where \texttt{i} is an agent index
+    \item \texttt{p -> q} returns \texttt{Disj (Not p) q} (as an abbreviation)
+    \item \texttt{p \^ q} returns \texttt{Not (Disj (Not p) (Not q))} (as an abbreviation)
 \end{itemize}
 
 \begin{code}
