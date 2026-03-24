@@ -12,11 +12,11 @@ where $p \in Prop$.
 \end{definition}
 
 \begin{definition}[LTS]
-A labelled transition system (LTS) is a tuple $\mathcal{M} = (S, (R_a)_{a \in Act}, V)$, where:
+A \textit{labelled transition system} (LTS) is a tuple $\mathcal{M} = (S, (R_a)_{a \in Act}, V)$, where:
 \begin{itemize}
-    \item $S$ is a non-empty set of states,
-    \item $(R_a)_{a \in Act}$ is a family of binary relations on $S$, each labelled by an action $a \in Act$,
-    \item $V: S \to 2^{Prop}$ is a valuation function.
+    \item $S$ is a non-empty set of \textit{states},
+    \item $(R_a)_{a \in Act}$ is a family of \textit{binary relations} on $S$, each labelled by an \textit{action} $a \in Act$,
+    \item $V: S \to 2^{Prop}$ is a \textit{valuation function}.
 \end{itemize}
 
 We write $s \xrightarrow{a} t$ if $(s,t) \in R_a$. For a plan $\sigma = a_1 \ldots a_n \in Act^*$, we write $s \xrightarrow{\sigma} t$ if there exist $s_1, \ldots, s_{n-1}$ such that $s \xrightarrow{a_1} s_1 \xrightarrow{a_2} \cdots \xrightarrow{a_n} t$. A plan $\sigma = a_1 \ldots a_n$ is \textit{strongly executable} at $s$ iff for every $0 \leq k < n$ and every $t$ such that $s \xrightarrow{\sigma_k} t$, the state $t$ has at least one $a_{k+1}$-successor.

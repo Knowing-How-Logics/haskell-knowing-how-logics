@@ -1,7 +1,41 @@
 \section{Testing and Validation}
 \label{sec:semanticstests}
 
-We now use the library QuickCheck to randomly generate models and states in order to test central semantic properties of both the basic single-agent logic \(\mathcal{L}_{Kh}\) and the multi-agent regular plan logic \(reg\text{-}\mathcal{L}^U_{KH}\).\\
+We now use the library QuickCheck to randomly generate models and states in order to test several basic semantic and implementation-level properties of both the basic single-agent logic \(\mathcal{L}_{Kh}\) and the multi-agent regular plan logic \(reg\text{-}\mathcal{L}^U_{KH}\).
+
+To perform these tests, we first define auxiliary types \texttt{PointedModel} (for single-agent models) and \texttt{PointedRegModel} (for multi-agent models), together with their \texttt{Arbitrary} instances. This allows QuickCheck to choose a random evaluation point inside a randomly generated model.
+
+
+\subsection{Tests for \(\mathcal{L}_{Kh}\)}
+
+We begin by testing several basic properties of the single-agent logic.
+
+The first group of tests concerns the Boolean fragment:
+
+\begin{itemize}
+    \item Double Negation Elimination: \(\neg\neg\varphi \equiv \varphi\)
+    \item Commutativity of Conjunction: \(\varphi \wedge \psi \equiv \psi \wedge \varphi\)
+    \item Identity of Conjunction: \(\varphi \wedge \top \equiv \varphi\)
+\end{itemize}
+
+We then test a property specific to the \(Kh\)-modality. In our semantics, \(Kh(\psi,\varphi)\) is \emph{global}: its truth value does not depend on the current evaluation state, since its semantic clause quantifies over all states satisfying the precondition \(\psi\). Hence, if \(Kh(\psi,\varphi)\) holds at one state of a model, it should hold at every state of that model.
+
+Finally, we test two basic implementation-level properties concerning plans: executing the empty plan should leave the current state unchanged, and the empty plan should be strongly executable at every state.\\
+
+
+\subsection{Tests for \(reg\text{-}\mathcal{L}^U_{KH}\)}
+
+In the multi-agent setting, we test several basic semantic and implementation-level properties of the \(Kh_i\)-modality.
+
+First, we test the case of an impossible precondition. If the precondition is contradictory, then no states satisfy it, and both semantic conditions of \(Kh_i(\psi,\varphi)\) are trivially satisfied. Hence, \(Kh_i(\psi,\varphi)\) should hold vacuously in this case.
+
+Second, as in the single-agent case, we verify that \(Kh_i(\psi,\varphi)\) is global in the model: its truth value does not depend on the evaluation state, since its semantics quantifies over all states satisfying the precondition.
+
+Finally, we include two implementation-level checks related to the automata-based part of the model checker. We first verify that the procedure \texttt{intersectionNonEmpty} is symmetric in its two automaton arguments. We also test that the path automata constructed in the implementation faithfully mirror the transition structure of the underlying LTS.
+
+
+\subsection{Test Implementation}
+We now present the HSpec and QuickCheck implementation of the test suite described above.\\
 
 \begin{code}
 module Main where
@@ -13,10 +47,6 @@ import Data.List.NonEmpty (toList)
 import SingleAgent
 import MultiAgent
 \end{code}
-
-The following uses the HSpec library to define our test suite.
-
-To perform these tests, we first define auxiliary types \texttt{PointedModel} (for single-agent models) and \texttt{PointedRegModel} (for multi-agent models), together with their \texttt{Arbitrary} instances. This allows QuickCheck to select a random evaluation point inside a randomly generated model.\\
 
 \begin{code}
 -- Pointed model for single-agent L_Kh
@@ -42,30 +72,6 @@ instance Arbitrary PointedRegModel where
         return (PRM (m, s))
 \end{code}
 
-\subsection{Tests for \(\mathcal{L}_{Kh}\)}
-
-We first test some basic properties of the single-agent logic. 
-
-The first group concerns the Boolean fragment. 
-
-\begin{itemize}
-    \item \textbf{Double Negation Elimination}
-    \begin{itemize}
-        \item $\neg\neg\varphi \equiv \varphi$
-    \end{itemize}
-    \item \textbf{Commutativity of Conjunction}
-    \begin{itemize}
-        \item $\varphi \wedge \psi \equiv \psi \wedge \varphi$
-    \end{itemize}
-    \item \textbf{Identity of Conjunction}
-    \begin{itemize}
-        \item $\varphi \wedge \top \equiv \varphi$
-    \end{itemize}
-\end{itemize}
-
-We then test a property specific to \(Kh\). 
-We verify that \(Kh(\psi,\varphi)\) is \emph{global}: its truth value does not depend on the current evaluation state, since its semantic clause quantifies over all states satisfying the precondition \(\psi\). Therefore, if \(Kh(\psi,\varphi)\) holds at one state of a model, it should hold at every state of that model.\\
-
 
 \begin{code}
 -- Helper: check if two formulas are equivalent at a specific point
@@ -74,21 +80,7 @@ isEquivalent (m, s) f1 f2 = isTrue (m, s) f1 == isTrue (m, s) f2
 
 \end{code}
 
-\subsection{Tests for \(reg\text{-}\mathcal{L}^U_{KH}\)}
-
-In the multi-agent setting, we test several central semantic properties of the \(Kh_i\)-modality.
-
-We test the case of an \textbf{impossible precondition}. If the precondition is contradictory, then no states satisfy it, and both semantic conditions of \(Kh_i(\psi,\varphi)\) are trivially satisfied. Hence, \(Kh_i(\psi,\varphi)\) should hold vacuously in this case.
-
-As in the single-agent case, we verify that \(Kh_i(\psi,\varphi)\) is \textbf{global} in the model: its truth value does not depend on the evaluation state, since its semantics quantifies over all states satisfying the precondition.
-
-Finally, we include a test at the level of the underlying automata machinery. In particular, we verify that the check for non-emptiness of language intersection between automata is symmetric. \\
-
 \begin{code}
--- Helper: universal implication in multi-agent models
-isUniversallyImpliedReg :: RegLTSU -> RegForm -> RegForm -> Bool
-isUniversallyImpliedReg m psi phi =
-    all (\s -> not (isTrueReg (m, s) psi) || isTrueReg (m, s) phi) (statesM m)
 
 -- A contradictory formula, used as bottom
 bottomReg :: RegForm
@@ -100,10 +92,6 @@ numAgentsIn m = length (uncertainty m)
 
 
 \end{code}
-
-\subsection{HSpec Test Suite}
-
-The test suite below combines general Boolean checks with semantic properties that are characteristic of knowing-how logics.\\
 
 \begin{code}
 main :: IO ()
@@ -123,11 +111,19 @@ main = hspec $ do
       property $ \(PM (m, s)) f ->
         isTrue (m, s) (Conj f T) === isTrue (m, s) f
 
-    it "KH is global: truth does not vary between states" $
+    it "Kh is global: truth does not vary between states" $
       property $ \m f g ->
-        let sts = toList (states m)
-            results = [ isTrue (m, s) (KH f g) | s <- sts ]
-        in not (null results) ==> all (== head results) results
+      let sts = toList (states m)
+          results = [ isTrue (m, s) (KH f g) | s <- sts ]
+      in all (== head results) results
+
+    it "Empty plan leaves the current state unchanged" $
+      property $ \(PM (m, s)) ->
+        executePlan (transitions m) s [] == [s]
+
+    it "Empty plan is strongly executable at every state" $
+        property $ \(PM (m, s)) ->
+          stronglyExecutableAt (transitions m) s []
 
   describe "Multi-Agent Logic reg-L^U_KH" $ do
 
@@ -140,7 +136,7 @@ main = hspec $ do
            let aIdx = (agent `mod` nA) + 1
            in isTrueReg (m, s) (KHI aIdx bottomReg phi)
 
-    it "KH_i is global: agent ability is a model-wide property" $
+    it "Kh_i is global: agent ability is a model-wide property" $
       property $ \(PRM (m, _)) agent ->
         let nA = numAgentsIn m
         in forAll (sized (generateRegForm nA)) $ \f ->
@@ -150,7 +146,7 @@ main = hspec $ do
                  results = [ isTrueReg (m, s) (KHI aIdx f g) | s <- sts ]
              in not (null results) ==> all (== head results) results
 
-    it "Intersection checking is symmetric: L(A1) intersect L(A2) is non-empty iff L(A2) intersect L(A1) is non-empty" $
+    it "Intersection checking is symmetric: the intersection of L(A1) and L(A2) is non-empty iff the intersection of L(A2) and L(A1) is non-empty" $
       property $ \(PRM (m, _)) agent1 agent2 ->
         let nA    = numAgentsIn m
             aIdx1 = (agent1 `mod` nA) + 1
@@ -164,37 +160,53 @@ main = hspec $ do
              ==
              intersectionNonEmpty aut2 aut1
 
+    it "Path automata mirror the LTS transitions" $
+      property $ \(PRM (m, _)) ->
+        forAll (elements (statesM m)) $ \t1 ->
+        forAll (elements (statesM m)) $ \t2 ->
+          let aut = buildPathAutomaton m t1 t2
+          in conjoin
+              [ getAutNext aut s a === getLtsNext m s a
+              | s <- statesM m
+              , a <- actionsA aut
+              ]
+
 \end{code}
 
 
-Running \texttt{stack test} yields the following relevant test output.
+Running \texttt{stack test} in the terminal yields the following relevant test output.
 
 \begin{verbatim}
 report> test (suite: quickcheck-logic)
                     
-
 Single-Agent Logic L_Kh
   Boolean: Double Negation Elimination (!!f <=> f) 
     +++ OK, passed 100 tests.
-  Boolean: Commutativity of Conjunction (f1 ^ f2 <=> f2 ^ f1)
+  Boolean: Commutativity of Conjunction (f1 ^ f2 <=> f2 ^ f1) 
     +++ OK, passed 100 tests.
   Boolean: Identity of Conjunction (f ^ T <=> f) 
     +++ OK, passed 100 tests.
-  KH is global: truth does not vary between states 
+  Kh is global: truth does not vary between states 
+    +++ OK, passed 100 tests.
+  Empty plan leaves the current state unchanged 
+    +++ OK, passed 100 tests.
+  Empty plan is strongly executable at every state 
     +++ OK, passed 100 tests.
 Multi-Agent Logic reg-L^U_KH
-  Vacuous Precondition: 
-  knowing how from contradiction holds vacuously 
+  Vacuous Precondition: knowing how from contradiction holds vacuously 
     +++ OK, passed 100 tests.
-  KH_i is global: agent ability is a model-wide property
+  Kh_i is global: agent ability is a model-wide property 
     +++ OK, passed 100 tests.
   Intersection checking is symmetric: 
-  L(A1) intersect L(A2) is non-empty 
-  iff L(A2) intersect L(A1) is non-empty
+  the intersection of L(A1) and L(A2) is non-empty 
+  iff the intersection of L(A2) and L(A1) is non-empty 
+    +++ OK, passed 100 tests.
+  Path automata mirror the LTS transitions 
+    +++ OK, passed 100 tests.
 
-Finished in 5.2967 seconds
-7 examples, 0 failures
+Finished in 32.4775 seconds
+10 examples, 0 failures
 \end{verbatim}
 
 
-Overall, these results provide evidence that the implementation captures several expected semantic properties.
+Overall, these results provide evidence that the implementation correctly captures the intended semantic and implementation-level properties of the logics.

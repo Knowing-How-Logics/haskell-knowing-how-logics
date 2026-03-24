@@ -475,14 +475,14 @@ isTrueReg (m, _) (KHI agent phi psi) =
 \end{code}
 
 \subsection{Parsing for $reg\text{-}\mathcal{L}^U_{KH}$}
-Formulas may be created in ghci using \texttt{parseForm}. The following inputs are accepted.
+Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following inputs are accepted.
 \begin{itemize}
-    \item 'p' or 'P' followed by an integer n returns \texttt{P n}
-    \item '!' followed by a valid input p returns \texttt{Neg p}
-    \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Disj p q}
-    \item "KH" followed by index i valid inputs p and q returns \texttt{KH i p q}
-    \item "->" prefixed and followed by valid inputs p and q returns \texttt{Disj (Not p) q} (abbreviation)
-    \item '\verb|^|' prefixed and followed by valid inputs p and q returns \texttt{Not (Disj (Not p) (Not q))} (abbreviation)
+    \item \texttt{p} or \texttt{P} followed by an integer \(n\) returns \texttt{P n}
+    \item \texttt{!} followed by a valid input \(p\) returns \texttt{Neg p}
+    \item \texttt{v} or \texttt{V} prefixed to valid inputs \(p\) and \(q\) returns \texttt{Disj p q}
+    \item \texttt{KH} followed by an index \(i\) and valid inputs \(p\) and \(q\) returns \texttt{KH i p q}
+    \item \texttt{->} prefixed to valid inputs \(p\) and \(q\) returns \texttt{Disj (Not p) q} (abbreviation)
+    \item \texttt{\^{}} prefixed to valid inputs \(p\) and \(q\) returns \texttt{Not (Disj (Not p) (Not q))} (abbreviation)
 \end{itemize}
 
 \begin{code}
