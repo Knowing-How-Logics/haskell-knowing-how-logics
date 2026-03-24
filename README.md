@@ -2,8 +2,8 @@
 
 This project implements model-checking procedures in Haskell for two knowing-how logics:
 
-- the basic single-agent logic **$\mathcal{L}_{Kh}$**
-- the uncertainty-based multi-agent logic **$reg\text{-}\mathcal{L}^U_{Kh}$**
+- the basic single-agent logic **LKh**
+- the uncertainty-based multi-agent logic **reg-L^U_Kh**
 
 In addition to the model checkers, the project includes parsers, random model generation, and a test suite using QuickCheck and HSpec.
 
@@ -11,35 +11,35 @@ In addition to the model checkers, the project includes parsers, random model ge
 
 ## Implemented Logics
 
-### 1. Single-Agent Logic: $\mathcal{L}_{Kh}$
+### 1. Single-Agent Logic: LKh
 
-The first logic is the basic knowing-how logic **$\mathcal{L}_{Kh}$**, following  Wang (2015), with the semantics reformulated in Areces et al. (2021).
+The first logic is the basic knowing-how logic **LKh**, following Wang (2015), with the semantics reformulated in Areces et al. (2021).
 
-Models are given as labelled transition systems ($\text{LTS}$).
+Models are given as labelled transition systems (LTS).
 A formula of the form `Kh(ψ, φ)` means that there exists a plan `σ` such that, for every state satisfying `ψ`, the plan `σ` is strongly executable and all states reachable by executing `σ` satisfy `φ`. Since the semantic clause quantifies over all states satisfying the precondition, the `Kh` modality is global in the model.
 
 This part of the project includes:
 
-- a Haskell representation of the syntax and semantics of $\mathcal{L}_{Kh}$
+- a Haskell representation of the syntax and semantics of LKh
 - an explicit model checker with bounded plan length
-- a parser for formulas of  $\mathcal{L}_{Kh}$
-- random generation of $\text{LTS}$ models and formulas for testing
+- a parser for formulas of LKh
+- random generation of LTS models and formulas for testing
 - QuickCheck-based validation of semantic and implementation-level properties
 
 ---
 
-### 2. Multi-Agent Logic: $reg\text{-}\mathcal{L}^U_{Kh}$
+### 2. Multi-Agent Logic: reg-L^U_Kh
 
-The second logic is the multi-agent extension **$reg\text{-}\mathcal{L}^U_{Kh}$**, which follows the algorithms described in Demri and Fervari (2023).
+The second logic is the multi-agent extension **reg-L^U_Kh**, which follows the algorithms described in Demri and Fervari (2023).
 
-Models are given as uncertainty-based labelled transition systems ($\text{reg-LTS}^U$), where each agent is associated with a set of finite automata representing indistinguishable plans.
+Models are given as uncertainty-based labelled transition systems (reg-LTS^U), where each agent is associated with a set of finite automata representing indistinguishable plans.
 A formula `Kh_i(ψ, φ)` holds iff there exists an automaton in the agent’s uncertainty set such that every plan accepted by the automaton is strongly executable from every `ψ`-state, and all resulting states satisfy `φ`.
 
 Model checking is carried out via a product digraph construction and a reachability analysis procedure.
 
 This part of the project includes:
 
-- a Haskell representation of $\text{reg-LTS}^U$ models and finite automata
+- a Haskell representation of reg-LTS^U models and finite automata
 - an implementation of the model-checking procedure based on product graphs and reachability
 - a parser for multi-agent formulas
 - random generation of models, automata, and formulas
@@ -51,11 +51,8 @@ This part of the project includes:
 
 ### Requirements
 
-
-
 - Stack
 - LaTeX (`latexmk`) for compiling the report
-  
 
 ---
 
@@ -87,7 +84,7 @@ stack ghci
 
 ### Single-Agent Logic
 
-Generate a random $\text{LTS}$ and model-check a formula:
+Generate a random LTS and model-check a formula:
 
 ```haskell
 m <- generate (generateLTS 5 3 2)
@@ -114,7 +111,7 @@ This evaluates a randomly generated formula in the given model.
 
 ### Multi-Agent Logic
 
-Generate a random $\text{reg-LTS}^U$ model and model-check a formula:
+Generate a random reg-LTS^U model and model-check a formula:
 
 ```haskell
 m <- generate (generateRegLTSU 5 3 2 2)
@@ -141,7 +138,7 @@ This evaluates a randomly generated multi-agent formula, where the first paramet
 
 ## Formula Input Format
 
-The project provides parsers for both the single-agent language $\mathcal{L}_{Kh}$ and the multi-agent language $reg\text{-}\mathcal{L}^U_{Kh}$.
+The project provides parsers for both the single-agent language LKh and the multi-agent language reg-L^U_Kh.
 
 ---
 ### Single-Agent Parser 
@@ -177,8 +174,6 @@ The project provides parsers for both the single-agent language $\mathcal{L}_{Kh
 | `KH2 φ ψ` | knowing-how for agent 2 | `KHI 2 φ ψ` |
 | `KH 1 φ ψ` | alternative syntax | `KHI 1 φ ψ` |
 | `(φ)` | parentheses for grouping | `φ` |
-
-
 
 ---
 
@@ -250,7 +245,6 @@ make clean
 ```
 
 This removes Stack build artifacts and auxiliary LaTeX files.
-
 
 ---
 
