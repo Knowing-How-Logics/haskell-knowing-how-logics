@@ -183,15 +183,16 @@ isTrue (m, _) (KH f g) =
 \end{code}
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
-Formulas may be created in ghci using \texttt{parseForm}. The following inputs are accepted.
+Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following inputs are accepted:
+
 \begin{itemize}
-    \item 'p' or 'P' followed by an integer n returns \texttt{P n}
-    \item 'T' returns \texttt{T}
-    \item '!' followed by a valid input p returns \texttt{Neg p}
-    \item '\verb|^|' prefixed and followed by valid inputs p and q returns \texttt{Conj p q}
-    \item "KH" followed by valid inputs p and q returns \texttt{KH p q}
-    \item "->" prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
-    \item 'v' or 'V' prefixed and followed by valid inputs p and q returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+    \item \texttt{p} or \texttt{P} followed by an integer $n$ returns \texttt{P n}
+    \item \texttt{T} returns \texttt{T}
+    \item \texttt{!} followed by a valid input $p$ returns \texttt{Neg p}
+    \item \texttt{\^} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Conj p q}
+    \item \texttt{KH} followed by valid inputs $p$ and $q$ returns \texttt{KH p q}
+    \item \texttt{->} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+    \item \texttt{v} or \texttt{V} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
 \end{itemize}
 
 \begin{code}

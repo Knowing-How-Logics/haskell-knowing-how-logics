@@ -1,4 +1,4 @@
-\section{Uncertainty-based Knowing-how logic with Regularity Constraints $reg\text{-}\mathcal{L}^U_{KH}$}\label{sec:MultiAgent}
+\section{Uncertainty-based Knowing-how logic with Regularity Constraints $reg\text{-}\mathcal{L}^U_{Kh}$}\label{sec:MultiAgent}
 
 In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan that is fail-proof, meaning that each partial execution must be completable. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur: the agent does not know which plan is adequate for the situation. All he can do is blindly apply a plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
 
@@ -10,7 +10,7 @@ In Theorem 2 from \cite{Demri2023}, it is shown that the model-checking problem 
 \subsection{Preliminaries}
 
 \begin{definition}[Syntax]
-Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \in Prop$ and $i \in Agt$, the language $reg\text{-}\mathcal{L}^U_{KH}$ is defined by
+Given a set of proposition letters $Prop$ and a set of agents $Agt$, where $p \in Prop$ and $i \in Agt$, the language $reg\text{-}\mathcal{L}^U_{Kh}$ is defined by
 \[
 \varphi := p \;|\; \lnot\varphi \;|\; \varphi\lor\varphi \;|\; Kh_i(\psi,\varphi).
 \]
@@ -216,7 +216,7 @@ getAgentAuts m agent =
 \end{code}
 
 \subsection{Model checker in Haskell}
-We now discuss the implementation model checking algorithms for $reg\text{-}\mathcal{L}^U_{KH}$ in Haskell.\par
+We now discuss the implementation model checking algorithms for $reg\text{-}\mathcal{L}^U_{Kh}$ in Haskell.\par
 Given a finite reg-LTS$^U$ $\mathcal{S} = (S, (R_a)_{a \in Act}, (U_i)_{i \in Agt}, V)$, 
 a state $s \in S$, and a formula $Kh_i(\varphi, \psi)$, we check whether $\mathcal{S}, s \models Kh_i(\varphi, \psi)$ by iterating over 
 all automata $\mathcal{A} \in U_a$ and verifying two conditions:
@@ -441,7 +441,7 @@ checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
         let pathAut = buildPathAutomaton m t1 t2
         in  intersectionNonEmpty aut pathAut
 \end{code}
-Following the semantics defined in Definition~4.7 and putting things together, we complete the model checker for $reg\text{-}\mathcal{L}^U_{KH}$.\\
+Following the semantics defined in Definition~4.7 and putting things together, we complete the model checker for $reg\text{-}\mathcal{L}^U_{Kh}$.\\
 \begin{code}
 -- [[phi]]= set of states that phi holds
 truthSet :: RegLTSU -> RegForm -> [State]
@@ -474,7 +474,7 @@ isTrueReg (m, _) (KHI agent phi psi) =
 (||=) = isTrueReg
 \end{code}
 
-\subsection{Parsing for $reg\text{-}\mathcal{L}^U_{KH}$}
+\subsection{Parsing for $reg\text{-}\mathcal{L}^U_{Kh}$}
 Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following inputs are accepted.
 \begin{itemize}
     \item \texttt{p} or \texttt{P} followed by an integer \(n\) returns \texttt{P n}
@@ -527,7 +527,7 @@ evalRegForm (m, s) str =
 
 \end{code}
 
-\subsection{Random Generation for $reg\text{-}\mathcal{L}^U_{KH}$}
+\subsection{Random Generation for $reg\text{-}\mathcal{L}^U_{Kh}$}
 
 \subsubsection{Model Generation with Parameters}
 
