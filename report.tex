@@ -1,7 +1,7 @@
 \documentclass[12pt,a4paper]{article}
 \input{latexmacros.tex}
 
-\title{Model Checking for Knowing-how Logics}
+\title{A Haskell Implementation of Model Checking for Knowing-how Logics}
 \author{Rens Doodeman, Ziqi Wang, and Zixuan Chen}
 \date{\today}
 \hypersetup{pdfauthor={Me}, pdftitle={My Report}}
@@ -11,9 +11,7 @@
 \maketitle
 
 \begin{abstract}
-We implement model checkers in Haskell for both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$. 
-For both logics, we validate the implementation by means of a range of tests using QuickCheck. 
-In addition, to improve usability, we provide a parser for each logic.
+We present Haskell implementations of model checking procedures for both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$. The implementation of $\mathcal{L}_{Kh}$ uses an explicit bounded search over plans, while the implementation of $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms in \cite{Demri2023}. To support experimentation, we also provide parsers for both logics, a collection of QuickCheck tests for basic semantic and implementation-level properties, and a lightweight web interface for interactive use.
 \end{abstract}
 
 \vspace{2cm} 
