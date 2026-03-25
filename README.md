@@ -1,4 +1,4 @@
-# KHMC: A Haskell Model Checker for Knowing-How Logics
+# KHMC: A Model Checker for Knowing-how Logics
 
 KHMC is a Haskell tool for experimenting with model checking in knowing-how logics. It currently supports:
 
@@ -92,6 +92,14 @@ Result:
 ```
 True
 ```
+## Formula Input
+
+Formulas and models can be conveniently generated using the provided web interface.
+
+The generated formulas can then be copied and evaluated directly in `ghci`, for example using `evalForm` or `evalRegForm`.
+
+For a precise description of the syntax and parsing rules, see the `report.pdf`.
+
 ## Running
 
 Run the test suite:
@@ -101,15 +109,26 @@ stack test
 ```
 
 Start an interactive GHCi session:
-```
+```haskell
 stack ghci
 ```
 ## Optional Makefile Commands
 
 The repository also includes a small Makefile for convenience:
-```
+```bash
 make           # compile the report
 make clean     # remove build and LaTeX auxiliary files
+```
+## Documentation
+
+A full description of the logics, the model-checking procedures, and the implementation details can be found in the project report:
+
+```bash
+open report.pdf
+```
+If the PDF has not been built yet, you can compile it with:
+```bash
+make report.pdf
 ```
 
 ## References
