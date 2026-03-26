@@ -45,6 +45,7 @@ module SingleAgent where
 import Data.List (nub, delete)
 -- import NoneEmpty including its constructor :|
 import Data.List.NonEmpty (NonEmpty(..), toList)
+import Data.Maybe (fromMaybe)
 -- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
 import Test.QuickCheck
@@ -57,11 +58,14 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 \end{code}
 
 Following Definition~3.2, we model the LTS as follows.
-When creating a LTS, consider that states :: NonEmpty State, and therefore must use the :| constructor, i.e. (n :| [n+1..]). 
+Note that propositions, actions, and states are all modeled as ints. 
+This might be slightly confusing from a cognitive perspective when reviewing models, 
+however it keeps the code simple and prevents unnecessary wrapping and complexity when computing. 
+When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). 
 For more information see NonEmpty on Hoogle.\\
 
 \begin{code}
-type Action = Integer
+type Action = Int
 type Plan = [Action]
 type State = Int
 type Valuation = [(State, [Proposition])]
@@ -105,10 +109,7 @@ image r u = [v | (x, v) <- r, x == u]
 
 -- Given (R_a)_a and an action x, return R_x
 r_a :: Relations -> Action -> Rel
-r_a rs a =
-    case lookup a rs of
-        Just r  -> r
-        Nothing -> []
+r_a rs a = fromMaybe [] (lookup a rs)
 
 -- Execute a plan from a given start state
 -- This corresponds to R_sigma(u)
@@ -117,7 +118,7 @@ executePlan _  u []       = [u]
 executePlan rs u (a:sigma) =
     nub (concat [ executePlan rs v sigma | v <- image (r_a rs a) u ])
 
--- Plan is SE or not at a state
+-- Plan is SE or not at a given state
 stronglyExecutableAt :: Relations -> State -> Plan -> Bool
 stronglyExecutableAt _  _ []       = True
 stronglyExecutableAt rs u (a:sigma) =
@@ -189,7 +190,7 @@ Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following
     \item \texttt{p} or \texttt{P} followed by an integer $n$ returns \texttt{P n}
     \item \texttt{T} returns \texttt{T}
     \item \texttt{!p} returns \texttt{Neg p}
-    \item \texttt{p \^ q} returns \texttt{Conj p q}
+    \item \texttt{p \& q} returns \texttt{Conj p q}
     \item \texttt{KH p q} returns \texttt{KH p q}
     \item \texttt{p -> q} returns \texttt{Neg (Conj p (Neg q))} (as an abbreviation)
     \item \texttt{p v q} or \texttt{p V q} returns \texttt{Neg (Conj (Neg p) (Neg q))} (as an abbreviation)
@@ -206,7 +207,7 @@ pForm = spaces *> pImpl where
     pDisj = chainl1 pConj (spaces *> oneOf "vV" *> spaces >> return (\p q -> Neg (Conj (Neg p) (Neg q))))
     
     -- Conjunction (left-associative)
-    pConj = chainl1 pPrefix (spaces *> char '^' *> spaces >> return Conj)
+    pConj = chainl1 pPrefix (spaces *> char '&' *> spaces >> return Conj)
 
     pPrefix = try pNeg <|> try pKH <|> pTrue <|> pRemainder 
 

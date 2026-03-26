@@ -11,7 +11,7 @@
 \maketitle
 
 \begin{abstract}
-We present Haskell implementations of model checking procedures for both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$. The implementation of $\mathcal{L}_{Kh}$ uses an explicit bounded search over plans, while the implementation of $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms in \cite{Demri2023}. To support experimentation, we also provide parsers for both logics, a collection of QuickCheck tests for basic semantic and implementation-level properties, and a lightweight web interface for interactive use.
+We present Haskell implementations of model checking procedures for both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$. The implementation of $\mathcal{L}_{Kh}$ uses an explicit bounded search over plans, while the implementation of $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms in \cite{Demri2023}. To support experimentation, we also provide parsers for both logics, a collection of QuickCheck tests for basic semantic and implementation-level properties, and a lightweight web interface for interactive use. For demo and testing purposes we implement a simple web-application.
 \end{abstract}
 
 \vspace{2cm} 
@@ -24,7 +24,7 @@ We present Haskell implementations of model checking procedures for both the bas
 
 %\input{Howto.tex}
 
-\input{ProjectDescription.tex}
+\input{Introduction.tex}
 
 % \input{lib/Basics.lhs}
 
@@ -32,11 +32,11 @@ We present Haskell implementations of model checking procedures for both the bas
 
 \input{lib/MultiAgent.lhs}
 
-% \input{exec/Main.lhs}
-
 \input{test/quickcheck.lhs}
 
 % \input{test/simpletests.lhs}
+
+\input{exec/Main.lhs}
 
 \input{Conclusion.tex}
 

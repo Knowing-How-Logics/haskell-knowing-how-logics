@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Knowing How Logics</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/main.js" defer></script>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-content">
+            <p class="page-title">Knowing How Logics</p>
+            <div>
+                <div class="agent-toggle">
+                    <div>Single Agent</div>
+                    <div>Multi Agent</div>
+                </div>
+                <a href="https://github.com/rensdoodeman/haskell-knowing-how-logics" target="_blank">&lt;&gt; Github</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="fst-container">
+        <h2>Formula Parser</h2>
+        <div class="syntax"></div>
+        <textarea placeholder="e.g., KH P12 (P12 & P3 -> P5)"></textarea>
+        <button class="primary-btn" id="parse-formula-btn">Parse to Haskell Formula</button>
+        <button class="secondary-btn" id="random-formula-btn">Generate Random Formula</button>
+        <hr>
+        <label>Haskell Formula</label>
+        <div class="output" id="formula-output"></div>
+        <ul id="formula-history"></ul>
+    </div>
+
+    <div class="container">
+        <h2>Model Generator</h2>
+        <div class="grid">
+            <div>
+                <label>States</label>
+                <input type="number" class="model-input" min="1" max="5">
+            </div>
+            <div>
+                <label>Actions</label>
+                <input type="number" class="model-input" min="0" max="10">
+            </div>
+            <div>
+                <label>Propositions</label>
+                <input type="number" class="model-input" min="0" max="10">
+            </div>
+            <div>
+                <label>Agents</label>
+                <input type="number" class="model-input" min="1" max="10">
+            </div>
+        </div>
+        <button class="primary-btn" id="parse-model-btn">Generate Model</button>
+        <button class="secondary-btn" id="random-model-btn">Generate Random Model</button>
+        <hr>
+        <label>Haskell Model</label>
+        <div class="output" id="model-output"></div>
+        <ul id="model-history"></ul>
+    </div>
+
+    <div class="container">
+        <h2>Model Checking (WIP)</h2>
+        <div class="output">ghci&gt; isTrueReg (m, s) (f)</div>
+        <p class="example-text">For example,</p>
+        <p class="output">ghci&gt; m = LTS {states = 1 :| [2,3,4,5],transitions = [(1,[(4,5),(4,2),(4,3),(5,1),(1,4),(2,2),(3,1),(4,4),(2,3)]), (2,[(4,3),(4,5),(2,5),(4,2),(5,4),(1,5)])],valuation = [(1,[1,3]),(2,[2,3]),(3,[1,2,3]),(4,[2,3]),(5,[2])]}
+
+ghci&gt; isTrue (m, 1) (KH (P 1) (P 2))</div>
+    </div>
+
+</body>
+
+</html>
