@@ -12,4 +12,9 @@ Therefore, another logic may be preferred, $\mathcal{L}^U_{Kh}$. In this logic, 
 Indistinguishable plans form equivalence classes, partitioning the set of available plans. Intuitively, plans considered identical by the agent are placed in the same class. 
 Furthermore, this logic involves multi-agents, as opposed to a single agent. Finally, a new logic, $reg\text{-}\mathcal{L}^U_{Kh}$, a variation of the second version, 
 introduces equivalence classes that are defined in terms of finite automatons. \par
-In this project, we modelled a family of knowing-how logics and implemented model checkers for both $\mathcal{L}_{Kh}$ and $reg\text{-}\mathcal{L}^U_{Kh}$. The checker for $\mathcal{L}_{Kh}$ is an explicit procedure with bounded plan length, while the checker for $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms described in \cite{Demri2023}. In addition, we implemented parsers for both logics and used QuickCheck to test several basic properties of the resulting systems. Together, these form the main contributions of the project.
+In this project, we modelled a family of knowing-how logics and implemented model checkers for both $\mathcal{L}_{Kh}$ and $reg\text{-}\mathcal{L}^U_{Kh}$. 
+The checker for $\mathcal{L}_{Kh}$ is an explicit procedure with bounded plan length, 
+while the checker for $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms described in \cite{Demri2023}. 
+In addition, we implemented parsers for both logics and used QuickCheck to test several basic properties of the resulting systems. 
+Together, these form the main contributions of the project. Additionally, for demo and testing purpose, 
+we've implemented a simple web-application to support model-checking by offering a visual experience and keeping a history of formulas and models (within a session). 
