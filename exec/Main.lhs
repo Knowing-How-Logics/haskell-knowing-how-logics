@@ -11,12 +11,12 @@ The web-app is consistent of a single page allowing users to do the following:
 
 The app also provides instructions on how to model-check.
 
-Providing a user-interface (UI) is an additonal feature to our project. 
-Therefore we have kept our implementation extremly simple. 
+Providing a user-interface (UI) is an additional feature to our project. 
+Therefore we have kept our implementation extremely simple. 
 We use a simple lightweight RESTful framework called scotty, and plain HTML and CSS is used for layout and styling. 
 We serve a single plain JavaScript script to connect the UI to our Haskell code. 
 
-The web-app is current not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|.
+The web-app is currently not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|.
 
 \begin{code}
 -- To allows Text to be interpreted as String
