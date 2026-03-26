@@ -204,3 +204,7 @@ ul > li:first-child {
 .model-input:invalid {
     border: 2px solid red;
 }
+
+.example-text {
+    margin-top: 10px;
+}
