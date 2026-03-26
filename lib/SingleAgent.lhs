@@ -189,11 +189,11 @@ Formulas may be created in \texttt{ghci} using \texttt{parseForm}. The following
 \begin{itemize}
     \item \texttt{p} or \texttt{P} followed by an integer $n$ returns \texttt{P n}
     \item \texttt{T} returns \texttt{T}
-    \item \texttt{!} followed by a valid input $p$ returns \texttt{Neg p}
-    \item \texttt{\&} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Conj p q}
-    \item \texttt{KH} followed by valid inputs $p$ and $q$ returns \texttt{KH p q}
-    \item \texttt{->} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
-    \item \texttt{v} or \texttt{V} prefixed and followed by valid inputs $p$ and $q$ returns \texttt{Neg (Conj p (Neg q))} (abbreviation)
+    \item \texttt{!p} returns \texttt{Neg p}
+    \item \texttt{p \& q} returns \texttt{Conj p q}
+    \item \texttt{KH p q} returns \texttt{KH p q}
+    \item \texttt{p -> q} returns \texttt{Neg (Conj p (Neg q))} (as an abbreviation)
+    \item \texttt{p v q} or \texttt{p V q} returns \texttt{Neg (Conj (Neg p) (Neg q))} (as an abbreviation)
 \end{itemize}
 
 \begin{code}

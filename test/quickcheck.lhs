@@ -1,7 +1,7 @@
 \section{Testing and Validation}
 \label{sec:semanticstests}
 
-We now use the library QuickCheck to randomly generate models and states in order to test several basic semantic and implementation-level properties of both the basic single-agent logic \(\mathcal{L}_{Kh}\) and the multi-agent regular plan logic \(reg\text{-}\mathcal{L}^U_{KH}\).
+We now use the library QuickCheck to randomly generate models and states in order to test several basic semantic and implementation-level properties of both the basic single-agent logic \(\mathcal{L}_{Kh}\) and the multi-agent regular plan logic \(reg\text{-}\mathcal{L}^U_{Kh}\).
 
 To perform these tests, we first define auxiliary types \texttt{PointedModel} (for single-agent models) and \texttt{PointedRegModel} (for multi-agent models), together with their \texttt{Arbitrary} instances. This allows QuickCheck to choose a random evaluation point inside a randomly generated model.
 
