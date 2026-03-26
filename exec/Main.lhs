@@ -5,7 +5,11 @@ The web-app is consistent of a single page allowing users to do the following:
 \begin{itemize}
     \item Parse single or multi agent formulas to our Haskell syntax
     \item Generate random single agent formulas in our Haskell syntax
+    \item Generate single or multi agent models in our Haskell syntax using size-parameters
+    \item Generate random single agent models in our Haskell syntax
 \end{itemize}
+
+The app also provides instructions on how to model-check.
 
 Providing a user-interface (UI) is an additonal feature to our project. 
 Therefore we have kept our implementation extremly simple. 
