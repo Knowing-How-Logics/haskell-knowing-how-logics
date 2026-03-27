@@ -1,8 +1,8 @@
 name: report
 version: 0.1.0.0
-synopsis: My Haskell project
-description: See report.pdf
-maintainer: My Name <my.email@example.com>
+synopsis: A model checker for knowing-how logics
+description: See haskell-knowing-how-logics.pdf
+maintainer: Ziqi Wang ziqi.wang6@student.uva.nl
 category: Logic
 spec-version: 0.36.0
 
@@ -33,14 +33,6 @@ executables:
       - report
 
 tests:
-  simpletests:
-    main: simpletests.lhs
-    source-dirs: test
-    dependencies:
-      - report
-      - QuickCheck
-      - hspec
-
   quickcheck-logic:     
     main:                quickcheck.lhs
     source-dirs:         test

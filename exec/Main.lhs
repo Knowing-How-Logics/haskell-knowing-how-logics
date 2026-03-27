@@ -14,10 +14,11 @@ The app also provides instructions on how to model-check.
 Providing a user-interface (UI) is an additional feature to our project. 
 Therefore we have kept our implementation extremely simple. 
 We use a simple lightweight RESTful framework called scotty, and plain HTML and CSS is used for layout and styling. 
-We serve a single plain JavaScript script to connect the UI to our Haskell code. 
+We serve a single plain JavaScript script to connect the UI to our Haskell code. We omit most of the code here.
 
-The web-app is currently not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|.
+The web-app is currently not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|. 
 
+\hide{
 \begin{code}
 -- To allows Text to be interpreted as String
 {-# LANGUAGE OverloadedStrings #-}
@@ -31,12 +32,21 @@ import Test.QuickCheck (generate, arbitrary, Gen)
 import SingleAgent (parseForm, Form, AbilityMap, generateLTS)
 import MultiAgent(parseRegForm, generateRegLTSU)
 
+\end{code}  
+}
+
+\begin{code}
 main :: IO ()
 main = scotty 3000 $ do
   middleware $ staticPolicy (noDots >-> addBase "static")
 
   get "/" $ do
     file "static/index.html"
+
+\end{code}  
+
+\hide{
+\begin{code}
   
   post "/parse-formula" $ do
     formula <- formParam "formula"        :: ActionM String
@@ -75,3 +85,4 @@ main = scotty 3000 $ do
     model <- liftAndCatchIO $ generate (arbitrary :: Gen AbilityMap)
     text $ pack (show model)
 \end{code}
+}

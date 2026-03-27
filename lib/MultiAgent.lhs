@@ -93,6 +93,8 @@ where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, s \Vdash \psi\}$
 The $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true". $Kh_i $ is also a global modality.
 \subsection{Haskell Representation}
 The syntax is modelled following Definition~4.1.\\
+
+\hide{
 \begin{code}
 module MultiAgent where
 
@@ -116,7 +118,10 @@ import Test.QuickCheck
 
 -- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
+\end{code}
+}
 
+\begin{code}
 type Agent = Int
 
 data RegForm = Prop Proposition | Not RegForm | Disj RegForm RegForm | KHI Agent RegForm RegForm
@@ -139,7 +144,8 @@ data Automaton = ATMN {
 } deriving (Eq, Show, Ord)
 \end{code}
 
-The product digraph from Definition~4.3 is implemented below. The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively.\\
+The product digraph from Definition~4.3 is implemented below. 
+The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively. They are omitted here. \\
 \begin{code}
 type GVertex = (State, State) -- (Automaton State, LTS State)
 type GEdge = (GVertex, GVertex)
@@ -149,10 +155,14 @@ data Digraph = Digraph {
     eSet :: [GEdge]
 } deriving (Eq, Show, Ord)
 
+\end{code}
+
+\hide{
+\begin{code}
+
 -- Helper function to get next automaton states under a given action
 getAutNext :: Automaton -> State -> Action -> [State]
-getAutNext atmn q a =
-    fromMaybe [] (lookup (q, a) (transitionsA atmn))
+getAutNext atmn q a = fromMaybe [] (lookup (q, a) (transitionsA atmn))
 
 -- Helper function to get next LTS states under a given action
 getLtsNext :: RegLTSU -> State -> Action -> [State]
@@ -170,31 +180,54 @@ buildDigraph m atmn = Digraph nodes edges
             , t'     <- getLtsNext m t act
             ]
 \end{code}
+}
 
 The following functions implement the relational notions from Definition~4.4.\\
+
 \begin{code}
 type PlanSet = [Plan]
 
 -- R_pi(u) = union of R_sigma(u) for all sigma in pi
 rPiU :: Relations -> State -> PlanSet -> [State]
-rPiU rs u plans =
-    nub (concat [executePlan rs u sigma | sigma <- plans])
+\end{code}
 
+\hide{
+\begin{code}
+rPiU rs u plans = nub (concat [executePlan rs u sigma | sigma <- plans])
+\end{code}
+}
+
+\begin{code}
 -- R_pi(X) = union of R_pi(u) for all u in X
 rPiX :: Relations -> [State] -> PlanSet -> [State]
-rPiX rs xs plans =
-    nub (concat [rPiU rs u plans | u <- xs])
+\end{code}
+\hide{
+\begin{code}
+rPiX rs xs plans = nub (concat [rPiU rs u plans | u <- xs])
+\end{code}
+}
 
+\begin{code}
 -- SE(sigma) = set of all states at which sigma is strongly executable
 seSigma :: [State] -> Relations -> Plan -> [State]
-seSigma sts rs sigma =
-    [u | u <- sts, stronglyExecutableAt rs u sigma]
+\end{code}
 
+\hide{
+\begin{code}
+seSigma sts rs sigma = [u | u <- sts, stronglyExecutableAt rs u sigma]
+\end{code}
+}
+
+\begin{code}
 -- SE(pi) = intersection of SE(sigma) for all sigma in pi
 sePi :: [State] -> Relations -> PlanSet -> [State]
-sePi sts rs plans =
-    [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
+
+\hide{
+\begin{code}
+sePi sts rs plans = [u | u <- sts, all (stronglyExecutableAt rs u) plans]
+\end{code}
+}
 
 The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~4.5. Because 4.4 and 4.5 are simply same concepts but in different perspectives.\par
 
@@ -442,6 +475,7 @@ checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
         in  intersectionNonEmpty aut pathAut
 \end{code}
 Following the semantics defined in Definition~4.7 and putting things together, we complete the model checker for $reg\text{-}\mathcal{L}^U_{Kh}$.\\
+
 \begin{code}
 -- [[phi]]= set of states that phi holds
 truthSet :: RegLTSU -> RegForm -> [State]
@@ -449,6 +483,9 @@ truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 
 -- Satisfaction relation for the propositional fragment
 isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
+\end{code}
+\hide{
+\begin{code}
 isTrueReg (m, s) (Prop p) =
     case lookup s (valuationM m) of
         Just props -> p `elem` props
@@ -457,7 +494,9 @@ isTrueReg (m, s) (Not f) =
     not (isTrueReg (m, s) f)
 isTrueReg (m, s) (Disj f g) =
     isTrueReg (m, s) f || isTrueReg (m, s) g
-
+\end{code}
+}
+\begin{code}
 -- Kh_a(phi, psi) holds iff there exists A in U_a such that
 -- (1) [[phi]] is subset of SE(L(A))      
 -- (2) R_{L(A)}([[phi]]) is subset of [[psi]]  
@@ -476,7 +515,7 @@ isTrueReg (m, _) (KHI agent phi psi) =
 
 \subsection{Parsing for $reg\text{-}\mathcal{L}^U_{Kh}$}
 
-Formulas may be created in \texttt{ghci} using \texttt{parseRegForm}. The following inputs are accepted.
+Formulas may be created in \texttt{ghci} using \texttt{parseRegForm}. We omit most of the code here. The following inputs are accepted.
 \begin{itemize}
     \item \texttt{p} or \texttt{P} followed by an integer \(n\) returns \texttt{Prop n}
     \item \texttt{!p} returns \texttt{Not p}
@@ -486,6 +525,7 @@ Formulas may be created in \texttt{ghci} using \texttt{parseRegForm}. The follow
     \item \texttt{p \& q} returns \texttt{Not (Disj (Not p) (Not q))} (as an abbreviation)
 \end{itemize}
 
+\hide{
 \begin{code}
 pRegForm :: Parsec String () RegForm
 pRegForm = spaces *> pImpl where
@@ -514,9 +554,10 @@ pRegForm = spaces *> pImpl where
     
     pRemainder = pVar <|> between (char '(' *> spaces) (spaces *> char ')') pRegForm
     pVar = spaces *> oneOf "pP" *> spaces *> (Prop . read <$> many1 digit) <* spaces
-    
-    
 
+\end{code} 
+}
+\begin{code}
 parseRegForm :: String -> Either ParseError RegForm
 parseRegForm = parse (pRegForm <* eof) "input"
 
@@ -533,6 +574,7 @@ evalRegForm (m, s) str =
 \subsubsection{Model Generation with Parameters}
 
 To facilitate testing in the multi-agent setting, we provide a function that generates a random reg-LTS$^U$ model with a fixed number of states, propositions, actions, and agents. 
+We omit the code here.
 
 The generated model includes:
 \begin{itemize}
@@ -543,6 +585,7 @@ The generated model includes:
     \item and for each agent, a set of automata representing uncertainty over plans.
 \end{itemize}
 
+\hide{
 \begin{code}
 -- Generate a random reg-LTS^U model with parameters
 -- n: number of states
@@ -619,7 +662,7 @@ generateAutomaton sts acts = do
         , final = if null finalStates then [head qs] else finalStates
         }
 \end{code}
-
+}
 It is possible to generate models and test formulas interactively in \texttt{ghci}. For instance:
 
 \begin{verbatim}

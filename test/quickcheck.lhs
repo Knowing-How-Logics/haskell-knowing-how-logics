@@ -34,9 +34,9 @@ Second, as in the single-agent case, we verify that \(Kh_i(\psi,\varphi)\) is gl
 Finally, we include two implementation-level checks related to the automata-based part of the model checker. We first verify that the procedure \texttt{intersectionNonEmpty} is symmetric in its two automaton arguments. We also test that the path automata constructed in the implementation faithfully mirror the transition structure of the underlying LTS.
 
 
-\subsection{Test Implementation}
-We now present the HSpec and QuickCheck implementation of the test suite described above.\\
-
+% \subsection{Test Implementation}
+% We now present the HSpec and QuickCheck implementation of the test suite described above.\\
+\hide{
 \begin{code}
 module Main where
 
@@ -172,6 +172,7 @@ main = hspec $ do
               ]
 
 \end{code}
+}
 
 
 Running \texttt{stack test} in the terminal yields the following relevant test output.
