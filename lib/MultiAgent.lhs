@@ -88,11 +88,11 @@ $\mathcal{S}, s \Vdash \neg \varphi$ & \textit{iff} & & $\mathcal{S}, s \not\Vda
 $\mathcal{S}, s \Vdash \psi \vee \varphi$ & \textit{iff} & & $\mathcal{S}, s \Vdash \psi \text{ or } \mathcal{S}, s \Vdash \varphi$ \\
 $\mathcal{S}, s \Vdash Kh_i(\psi, \varphi)$ & \textit{iff} & & there is a finite automaton $\mathcal{A}\in U_i$, such that (1) $[\![\psi]\!]^{\mathcal{S}}\subseteq SE(L(\mathcal{A}))$ and (2) for every $t\in [\![\psi]\!]^\mathcal{S}$, $R_{L(\mathcal{A})}(t) \subseteq [\![\varphi]\!]^\mathcal{S}$,\\
 \end{tabularx}
-where $[\![\psi]\!]^{\mathcal{S}} := \{w\in S \mid \mathcal{S}, s \Vdash \psi\}$ is the set of all states satisfying $\psi$. 
+where $[\![\psi]\!]^{\mathcal{S}} := \{s\in S \mid \mathcal{S}, s \Vdash \psi\}$ is the set of all states satisfying $\psi$. 
 \end{definition}
 The $Kh_i (\psi,\varphi)$ can be interpreted as "when $\psi$ is the case, the agent $i$ knows how to make $\varphi$ true". $Kh_i $ is also a global modality.
 \subsection{Haskell Representation}
-The syntax is modelled following Definition~4.1.\\
+The syntax is modelled following Definition~3.1.\\
 
 \hide{
 \begin{code}
@@ -129,7 +129,7 @@ data RegForm = Prop Proposition | Not RegForm | Disj RegForm RegForm | KHI Agent
 
 \end{code}
 
-The automaton type implements Definition~4.2.\\
+The automaton type implements Definition~3.2.\\
 
 \begin{code}
 type Successors = [State]
@@ -144,7 +144,7 @@ data Automaton = ATMN {
 } deriving (Eq, Show, Ord)
 \end{code}
 
-The product digraph from Definition~4.3 is implemented below. 
+The product digraph from Definition~3.3 is implemented below. 
 The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively. They are omitted here. \\
 \begin{code}
 type GVertex = (State, State) -- (Automaton State, LTS State)
@@ -182,7 +182,7 @@ buildDigraph m atmn = Digraph nodes edges
 \end{code}
 }
 
-The following functions implement the relational notions from Definition~4.4.\\
+The following functions implement the relational notions from Definition~3.4.\\
 
 \begin{code}
 type PlanSet = [Plan]
@@ -229,9 +229,9 @@ sePi sts rs plans = [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
 }
 
-The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~4.5. Because 4.4 and 4.5 are simply same concepts but in different perspectives.\par
+The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~3.5. Because 3.4 and 3.5 are simply same concepts but in different perspectives.\par
 
-Finally, the reg-LTS$^U$ model implements Definition~4.6.\\
+Finally, the reg-LTS$^U$ model implements Definition~3.6.\\
 \begin{code}
 type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
 
@@ -474,7 +474,7 @@ checkCond2 m aut phiStates negPsiStates = not (any violates pairs)
         let pathAut = buildPathAutomaton m t1 t2
         in  intersectionNonEmpty aut pathAut
 \end{code}
-Following the semantics defined in Definition~4.7 and putting things together, we complete the model checker for $reg\text{-}\mathcal{L}^U_{Kh}$.\\
+Following the semantics defined in Definition~3.7 and putting things together, we complete the model checker for $reg\text{-}\mathcal{L}^U_{Kh}$.\\
 
 \begin{code}
 -- [[phi]]= set of states that phi holds

@@ -36,7 +36,7 @@ $\mathcal{M}, s \models Kh(\psi, \varphi)$ & \textit{iff} & & there exists a $\s
 The $Kh(\psi,\varphi)$ can be interpreted as "the agent knows how to achieve $\varphi$ given $\psi$". Notice that the $Kh$ is a global modality. Namely, either it holds for all states, or none of them.
 
 \subsection{Haskell Representation}
-The syntax is modelled following Definition~3.1.\\
+The syntax is modelled following Definition~2.1.\\
 
 \hide{
 \begin{code}
@@ -60,7 +60,7 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 
 \end{code}
 
-Following Definition~3.2, we model the LTS as follows.
+Following Definition~2.2, we model the LTS as follows.
 When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). \\
 
 \begin{code}
@@ -77,7 +77,7 @@ data AbilityMap = LTS {
 
 \end{code}
 
-The relations and strong executability in Definition~3.2 are implemented below.
+The relations and strong executability in Definition~2.2 are implemented below.
 Both of these are binary relations on states. Therefore, in our implementation, we use the same Haskell type \texttt{Rel} to represent them, since both can be understood as sets of pairs of states.
 
 To represent the family of atomic relations $R = (R_a)_a$, we index relations by actions. This gives rise to the type \texttt{Relations}, corresponding to the collection of action-labelled transitions in the literature.
@@ -126,7 +126,7 @@ stronglyExecutableAt rs u (a:sigma) =
         all (\v -> stronglyExecutableAt rs v sigma) next
 \end{code}
 \subsection{Model checker in Haskell}
-We now implement the semantics in Definition~3.3.
+We now implement the semantics in Definition~2.3.
 Note that \texttt{findPlans} enumerates all plans up to a fixed depth (currently 5). 
 This is a bounded approximation: if a witness plan longer than the bound exists, the checker will not find it. 
 A complete decision procedure would require another $\mathsf{PSPACE\text{-}Complete}$ algorithm in Theorem 1 from \cite{Demri2023}.\\
