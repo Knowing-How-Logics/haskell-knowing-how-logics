@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+title: KHora
+message: "If you use this software, please cite it as below."
+type: software
+keywords:
+  - model checking
+  - knowing-how logic
+  - Haskell
+  - modal logic
+authors:
+  - family-names: Doodeman
+    given-names: Rens
+    orcid: "https://orcid.org/0009-0002-0102-5974"
+  - family-names: Wang
+    given-names: Ziqi
+    orcid: "https://orcid.org/0009-0008-6998-1448"
+  - family-names: Chen
+    given-names: Zixuan
+    orcid: "https://orcid.org/0009-0004-1971-3091"
+version: 1.0.0
+date-released: 2026-03-29
+abstract: "KHora is a Haskell-based tool for model checking knowing-how logics, supporting the basic knowing-how logic and the uncertainty-based knowing-how logic with regularity constraints."
+repository-code: "https://github.com/Knowing-How-Logics/haskell-knowing-how-logics"
+license: GPL-3.0-or-later
