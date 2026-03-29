@@ -1,6 +1,6 @@
 # KHora: A Model Checker for Knowing-How Logics
 
-KHora is a Haskell model checking tool for knowing-how logics. It currently supports:
+KHora is a model checking tool for knowing-how logics, written in Haskell. It currently supports:
 
 - the basic knowing-how logic $\mathcal{L}_{Kh}$;
 - the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$.
@@ -37,7 +37,7 @@ Start GHCi first:
 stack ghci
 ```
 Then load the relevant modules:
-```
+```haskell
 :module +SingleAgent MultiAgent Test.QuickCheck
 ```
 We can generate formulas and models for both logics either via the web interface or directly in GHCi.
@@ -76,7 +76,7 @@ We can also test the checker on a small hand-crafted `reg-LTS^U` model:
 ghci> let m = RegLTSU {statesM = [1,2], relationsM = [(1,[(1,2),(2,2)])], uncertainty = [(1,[ATMN {statesA = [1,2], actionsA = [1], transitionsA = [((1,1),[2]),((2,1),[])], initial = [1], final = [2]}])], valuationM = [(1,[1]),(2,[2])]}
 ```
 
-We can then evaluate the formula $Kh_1(p_1,p_2)$ on m using the parser:
+We can then evaluate the formula $Kh_1(p_1,p_2)$ on `m` using the parser:
 ```
 ghci> evalRegForm (m, 1) "KH1 p1 p2"
 ```
@@ -106,14 +106,14 @@ For a precise description of the syntax and parsing rules, see the `KHora.pdf`.
 
 ## Documentation
 
-A full description of the logics, the model-checking procedures, and the implementation details can be found in the description:
+A full description of the logics, the model-checking procedures, and the implementation details can be found in the report:
 
 ```bash
-open KHora.pdf
+open tex/KHora.pdf
 ```
 If the PDF has not been built yet, you can compile it with:
 ```bash
-make KHora.pdf
+make
 ```
 ## References
 
