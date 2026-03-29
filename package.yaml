@@ -1,7 +1,7 @@
 name: KHora
 version: 1.0.0.0
 synopsis: A model checker for knowing-how logics
-description: See haskell-knowing-how-logics.pdf
+description: See tex/KHora.pdf
 maintainer: Ziqi Wang ziqi.wang6@student.uva.nl
 category: Logic
 spec-version: 0.36.0
