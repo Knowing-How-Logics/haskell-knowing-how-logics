@@ -1,7 +1,7 @@
 \section{Basic Knowing How Logic $\mathcal{L}_{Kh}$}\label{sec:SingleAgent}
 In this section we model the language of $\mathcal{L}_{Kh}$ introduced in \cite{Wang2015}. This captures the basic idea of an agent knowing how to achieve a goal under certain condition. We implement an explicit model-checker for this logic with a bounded plan depth, along with \texttt{QuickCheck} generators for random testing of the semantics.
 \subsection{Preliminaries}
-\begin{definition}(Syntax)å
+\begin{definition}(Syntax)
 Given a set of proposition letters $Prop$, the language $\mathcal{L}_{Kh}$ is defined by
 \[
 \varphi\, ::= \top\mid \, p\,|\, \neg \varphi\,|\, \varphi\wedge\varphi \, | \,Kh(\varphi,\varphi), 
@@ -49,7 +49,6 @@ import Data.Maybe (fromMaybe)
 -- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
 import Test.QuickCheck
-import Test.QuickCheck.Gen.Unsafe (capture)
 \end{code}
 }
 

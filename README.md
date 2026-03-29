@@ -115,10 +115,6 @@ If the PDF has not been built yet, you can compile it with:
 ```bash
 make KHora.pdf
 ```
-## Limitations
-
-We do not verify that the languages recognized by distinct automata for the same agent are pairwise disjoint. As a result, the correctness of the model checker currently relies on the user providing uncertainty components that already satisfy this condition. Additionally, the checker for the basic knowing-how logic is based on a bounded plan search. We will address these limitations in the future work.
-
 ## References
 
 - Wang, Y. (2015). *A Logic of Knowing How*. In *Logic, Rationality, and Interaction: 5th International Workshop, LORI 2015*, LNCS 9394, pp. 392–405. Springer.

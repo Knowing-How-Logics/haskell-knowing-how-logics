@@ -585,6 +585,44 @@ The generated model includes:
     \item and for each agent, a set of automata representing uncertainty over plans.
 \end{itemize}
 
+In addition, we implement a sanity check on the uncertainty component. This verify that the languages recognized by distinct automata for the same agent are pairwise disjoint.
+
+
+\hide{
+\begin{code}
+sanityCheckAutomaton :: Automaton -> Bool
+sanityCheckAutomaton aut =
+    not (null (statesA aut))
+    && not (null (actionsA aut))
+    && not (null (initial aut))
+    && not (null (final aut))
+    && all (`elem` statesA aut) (initial aut)
+    && all (`elem` statesA aut) (final aut)
+    && all validTransition (transitionsA aut)
+  where
+    validTransition ((q, a), nexts) =
+        q `elem` statesA aut
+        && a `elem` actionsA aut
+        && all (`elem` statesA aut) nexts
+
+pairwiseDisjointAutomata :: [Automaton] -> Bool
+pairwiseDisjointAutomata auts =
+    and [ not (intersectionNonEmpty a1 a2)
+        | (i, a1) <- zip [0 :: Int ..] auts,
+        (j, a2) <- zip [0 :: Int ..] auts,
+        i < j
+        ]
+
+sanityCheckAgentAutomata :: [Automaton] -> Bool
+sanityCheckAgentAutomata auts =
+    all sanityCheckAutomaton auts && pairwiseDisjointAutomata auts
+
+sanityCheckRegLTSU :: RegLTSU -> Bool
+sanityCheckRegLTSU m =
+    all (sanityCheckAgentAutomata . snd) (uncertainty m)
+\end{code}
+}
+
 \hide{
 \begin{code}
 -- Generate a random reg-LTS^U model with parameters
@@ -636,8 +674,11 @@ generateRandomValuation props s = do
 -- Generate a list of automata for one agent
 generateAutomata :: [State] -> [Action] -> Gen [Automaton]
 generateAutomata sts acts = do
-    numAuts <- choose (1, 3)
-    vectorOf numAuts (generateAutomaton sts acts)
+    numAuts <- chooseInt (1, 3)
+    auts <- vectorOf numAuts (generateAutomaton sts acts)
+    if sanityCheckAgentAutomata auts
+       then return auts
+       else generateAutomata sts acts
 
 
 -- Generate a simple random automaton
@@ -663,39 +704,26 @@ generateAutomaton sts acts = do
         }
 \end{code}
 }
-It is possible to generate models and test formulas interactively in \texttt{ghci}. For instance:
+We do a small example here to generate models and test formulas interactively using \texttt{ghci}:
 
 \begin{verbatim}
-ghci> m <- generate (generateRegLTSU 5 3 2 2)
-ghci> m
-RegLTSU {statesM = [1,2,3,4,5], 
-relationsM = [(1,[(1,1),(3,1),(4,2)]),
-(2,[(4,4),(5,4),(1,1),(1,2),(3,2),
-(1,3),(4,3),(5,3),(1,4),(5,1),(3,1),
-(2,3),(2,1),(1,5),(2,4),(4,2)])], 
-uncertainty = [(1,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], 
-transitionsA = [((1,1),[2,3]),((1,2),[1,3,5]),((2,1),[1,3,5]),
-((2,2),[1,2,3]),((3,1),[2,4]),((3,2),[3,4]),
-((4,1),[1,3]),((4,2),[2,4,5]),((5,1),[4]),((5,2),[3])], 
-initial = [3], final = [3,5]}]),
-(2,[ATMN {statesA = [1,2,3,4,5], actionsA = [1,2], 
-transitionsA = [((1,1),[3,5]),
-((1,2),[1,2,5]),((2,1),[1,3,5]),((2,2),[1,3,4,5]),
-((3,1),[2,5]),((3,2),[5]),((4,1),[1,3]),
-((4,2),[3,4,5]),((5,1),[3]),((5,2),[3])], 
-initial = [2,5], final = [1,3,5]}])], 
-valuationM = [(1,[1,3]),(2,[1,3]),(3,[1]),(4,[1,2,3]),(5,[1,3])]}
+ghci> m <- generate (generateRegLTSU 3 2 1 1)
 
--- Evaluate a formula at a state
-ghci> isTrueReg (m, 1) (KHI 1 (Prop 1) (Prop 2))
-False
+ghci> print m
+RegLTSU {statesM = [1,2,3], 
+relationsM = [(1,[(1,3),(3,2),(2,2),(2,1)])], 
+uncertainty = [(1,[
+    ATMN {statesA = [1,2,3], actionsA = [1], 
+    transitionsA = [((1,1),[]),((2,1),[1,3]),((3,1),[2])], 
+    initial = [1,3], final = [1]}])], 
+    valuationM = [(1,[]),(2,[1]),(3,[])]}
 
--- Using the parser
+ghci> sanityCheckRegLTSU m
+True
+
 ghci> evalRegForm (m, 1) "KH1 p1 p2"
 False
 \end{verbatim}
-
-In the example above, \texttt{generateRegLTSU 5 3 2 2} produces a model with five states, three propositions, two actions, and two agents. Each agent is associated with a randomly generated set of automata representing its uncertainty over plans.
 
 \subsubsection{Arbitrary Instances for QuickCheck}
 
