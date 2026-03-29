@@ -23,7 +23,7 @@ To build and run KHora, you will need:
 ### Setup
 
 ```bash
-git clone https://github.com/rensdoodeman/haskell-knowing-how-logics.git
+git clone https://github.com/Knowing-How-Logics/haskell-knowing-how-logics.git
 cd haskell-knowing-how-logics
 stack build
 ```

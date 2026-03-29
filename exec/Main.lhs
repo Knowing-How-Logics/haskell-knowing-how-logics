@@ -16,7 +16,7 @@ Therefore we have kept our implementation extremely simple.
 We use a simple lightweight $\textsf{RESTful}$ framework called scotty, and plain $\textsf{HTML}$ and $\textsf{CSS}$ is used for layout and styling. 
 We serve a single plain $\textsf{JavaScript}$ script to connect the $\textsf{UI}$ to our $\textsf{Haskell}$ code. We omit most of the code here.
 
-The web-app is currently not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|. 
+The web-app is currently not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|. \\
 
 \hide{
 \begin{code}
