@@ -1,9 +1,7 @@
 \section{Basic Knowing How Logic $\mathcal{L}_{Kh}$}\label{sec:SingleAgent}
-In this section we model the language of \textit{basic knowing how} $\mathcal{L}_{Kh}$ introduced in \cite{Wang2015}. This logic captures the ability of an agent to achieve a goal $\varphi$ given a precondition $\psi$, by requiring the existence of a plan that is strongly executable and goal-reaching from every state satisfying $\psi$. The underlying models are labelled transition systems, where each relation corresponds to an action the agent can perform.\par
-
-We implement an explicit model-checker for this logic with a bounded plan depth, along with QuickCheck generators for random testing of the semantics.
+In this section we model the language of $\mathcal{L}_{Kh}$ introduced in \cite{Wang2015}. This captures the basic idea of an agent knowing how to achieve a goal under certain condition. We implement an explicit model-checker for this logic with a bounded plan depth, along with \texttt{QuickCheck} generators for random testing of the semantics.
 \subsection{Preliminaries}
-\begin{definition}(Syntax)
+\begin{definition}(Syntax)å
 Given a set of proposition letters $Prop$, the language $\mathcal{L}_{Kh}$ is defined by
 \[
 \varphi\, ::= \top\mid \, p\,|\, \neg \varphi\,|\, \varphi\wedge\varphi \, | \,Kh(\varphi,\varphi), 
@@ -51,6 +49,7 @@ import Data.Maybe (fromMaybe)
 -- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
 import Test.QuickCheck
+import Test.QuickCheck.Gen.Unsafe (capture)
 \end{code}
 }
 
@@ -63,7 +62,7 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 \end{code}
 
 Following Definition~3.2, we model the LTS as follows.
-When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). 
+When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). \\
 
 \begin{code}
 type Action = Int
@@ -131,7 +130,7 @@ stronglyExecutableAt rs u (a:sigma) =
 We now implement the semantics in Definition~3.3.
 Note that \texttt{findPlans} enumerates all plans up to a fixed depth (currently 5). 
 This is a bounded approximation: if a witness plan longer than the bound exists, the checker will not find it. 
-A complete decision procedure would require another PSPACE-Complete algorithm in Theorem 1 from \cite{Demri2023}.\\
+A complete decision procedure would require another $\mathsf{PSPACE\text{-}Complete}$ algorithm in Theorem 1 from \cite{Demri2023}.\\
 
 
 \begin{code}

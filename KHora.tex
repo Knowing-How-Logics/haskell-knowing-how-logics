@@ -1,7 +1,7 @@
 \documentclass[12pt,a4paper]{article}
 \input{latexmacros.tex}
 
-\title{KHMC: A Model Checker for Knowing-how Logics}
+\title{\textsf{KHora}: A Model Checker for Knowing-How Logics}
 \author{Rens Doodeman, Ziqi Wang, and Zixuan Chen}
 \date{\today}
 \hypersetup{pdfauthor={Me}, pdftitle={My Report}}
@@ -11,7 +11,7 @@
 \maketitle
 
 \begin{abstract}
-We present Haskell implementations of model checking procedures for both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$. The implementation of $\mathcal{L}_{Kh}$ uses an explicit bounded search over plans, while the implementation of $reg\text{-}\mathcal{L}^U_{Kh}$ follows the algorithms in \cite{Demri2023}. To support experimentation, we also provide parsers for both logics, a collection of QuickCheck tests for basic semantic and implementation-level properties, and a lightweight web interface for interactive use. For demo and testing purposes we implement a simple web-application.
+We present \textsf{KHora}, a tool for model checking both the basic knowing-how logic $\mathcal{L}_{Kh}$ and the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$ in $\textsf{Haskell}$. The implementation of $\mathcal{L}_{Kh}$ uses an explicit bounded search over plans, while the implementation of $reg\text{-}\mathcal{L}^U_{Kh}$. To support experimentation, we also provide parsers for both logics, a collection of $\texttt{QuickCheck}$ tests for basic semantic and implementation-level properties, and a lightweight web interface for better user experience.
 \end{abstract}
 
 \vspace{2cm} 

@@ -1,10 +1,10 @@
 
 .PHONY: all build run test clean
 
-all: report.pdf build
+all: KHora.pdf build
 
-report.pdf: *.tex lib/*.lhs test/*.lhs exec/*.lhs references.bib
-	latexmk -pdf -synctex=1 -interaction=nonstopmode report
+KHora.pdf: *.tex lib/*.lhs test/*.lhs exec/*.lhs references.bib
+	latexmk -pdf -synctex=1 -interaction=nonstopmode KHora
 
 build:
 	stack build

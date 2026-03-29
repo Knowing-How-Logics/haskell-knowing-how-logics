@@ -1,20 +1,22 @@
-# KHMC: A Model Checker for Knowing-how Logics
+# KHora: A Model Checker for Knowing-How Logics
 
-KHMC is a Haskell tool for experimenting with model checking in knowing-how logics. It currently supports:
+KHora is a Haskell model checking tool for knowing-how logics. It currently supports:
 
 - the basic knowing-how logic $\mathcal{L}_{Kh}$;
 - the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$.
 
-In addition to the core model checkers, the project includes parsers for both logics, random generators for models and formulas, a test suite based on QuickCheck and HSpec, and a lightweight web interface for interactive use. For more information, please check the relevant section in `report.pdf`.
+In addition to the core model checkers, KHora provides parsers for both logics, random generators for models and formulas, a test suite based on `QuickCheck` and `HSpec`, and a lightweight web interface.
+
+For further details, see the relevant sections of `KHora.pdf`.
 
 
 ## Installation
 
 ### Requirements
 
-To build and run KHMC, you will need:
+To build and run KHora, you will need:
 
-- [Stack](https://docs.haskellstack.org/) (recommended)
+- [Stack](https://docs.haskellstack.org/)
 - a recent GHC version supported by Stack
 - a TeX distribution with `latexmk` if you want to compile the report (optional)
 
@@ -38,9 +40,11 @@ Then load the relevant modules:
 ```
 :module +SingleAgent MultiAgent Test.QuickCheck
 ```
+We can generate formulas and models for both logics either via the web interface or directly in GHCi.
 
+Here are the examples for using GHCi:
 ### For $\mathcal{L}_{Kh}$
-Generate a random `LTS` named `m` with `5` states, `3` propositional variables, and `2` actions. 
+Generate a random `LTS` named `m` with `5` states, `3` propositional variables, and `2` actions.
 ```haskell
 ghci> m <- generate (generateLTS 5 3 2)
 ```
@@ -66,70 +70,54 @@ False
 ```
 ### For $reg\text{-}\mathcal{L}^U_{Kh}$
 
-Generate a small random `reg-LTS^U` model named `m` with `3` states, `2` propositional variables, `1` action, and `1` agent:
+We can also test the checker on a small hand-crafted `reg-LTS^U` model:
 
 ```haskell
-ghci> m <- generate (generateRegLTSU 3 2 1 1)
+ghci> let m = RegLTSU {statesM = [1,2], relationsM = [(1,[(1,2),(2,2)])], uncertainty = [(1,[ATMN {statesA = [1,2], actionsA = [1], transitionsA = [((1,1),[2]),((2,1),[])], initial = [1], final = [2]}])], valuationM = [(1,[1]),(2,[2])]}
 ```
-Print the model:
 
-```haskell
-ghci> print m
-```
-```haskell
-RegLTSU {statesM = [1,2,3], relationsM = [(1,[(1,2),(2,1),(1,3),(3,3),(3,2),(2,2),(2,3)])], uncertainty = [(1,[ATMN {statesA = [1,2,3], actionsA = [1], transitionsA = [((1,1),[]),((2,1),[1,2]),((3,1),[2,3])], initial = [1], final = [1,3]},ATMN {statesA = [1,2,3], actionsA = [1], transitionsA = [((1,1),[1,2]),((2,1),[2]),((3,1),[])], initial = [2,3], final = [1,2,3]},ATMN {statesA = [1,2,3], actionsA = [1], transitionsA = [((1,1),[1,2]),((2,1),[2]),((3,1),[1,2])], initial = [2], final = [1]}])], valuationM = [(1,[]),(2,[1,2]),(3,[])]}
-```
 We can then evaluate the formula $Kh_1(p_1,p_2)$ on m using the parser:
-```hashell
+```
 ghci> evalRegForm (m, 1) "KH1 p1 p2"
 ```
-
-Alternatively, we can evaluate the same formula directly using its internal representation:
-```haskell
+Or, directly:
+```
 ghci> isTrueReg (m, 1) (KHI 1 (Prop 1) (Prop 2))
 ```
 Result:
 ```
 True
 ```
-## Formula Input
+
+## Input Format
 
 Formulas and models can be conveniently generated using the provided web interface.
 
+To start the web interface, run:
+
+```bash
+stack build
+stack run
+```
+
 The generated formulas can then be copied and evaluated directly in `ghci`, for example using `evalForm` or `evalRegForm`.
 
-For a precise description of the syntax and parsing rules, see the `report.pdf`.
+For a precise description of the syntax and parsing rules, see the `KHora.pdf`.
 
-## Running
-
-Run the test suite:
-
-```bash
-stack test
-```
-
-Start an interactive GHCi session:
-```haskell
-stack ghci
-```
-## Optional Makefile Commands
-
-The repository also includes a small Makefile for convenience:
-```bash
-make           # compile the report
-make clean     # remove build and LaTeX auxiliary files
-```
 ## Documentation
 
-A full description of the logics, the model-checking procedures, and the implementation details can be found in the project report:
+A full description of the logics, the model-checking procedures, and the implementation details can be found in the description:
 
 ```bash
-open report.pdf
+open KHora.pdf
 ```
 If the PDF has not been built yet, you can compile it with:
 ```bash
-make report.pdf
+make KHora.pdf
 ```
+## Limitations
+
+We do not verify that the languages recognized by distinct automata for the same agent are pairwise disjoint. As a result, the correctness of the model checker currently relies on the user providing uncertainty components that already satisfy this condition. Additionally, the checker for the basic knowing-how logic is based on a bounded plan search. We will address these limitations in the future work.
 
 ## References
 

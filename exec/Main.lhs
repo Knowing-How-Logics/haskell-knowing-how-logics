@@ -11,10 +11,10 @@ The web-app is consistent of a single page allowing users to do the following:
 
 The app also provides instructions on how to model-check.
 
-Providing a user-interface (UI) is an additional feature to our project. 
+Providing a user-interface ($\textsf{UI}$) is an additional feature to our project. 
 Therefore we have kept our implementation extremely simple. 
-We use a simple lightweight RESTful framework called scotty, and plain HTML and CSS is used for layout and styling. 
-We serve a single plain JavaScript script to connect the UI to our Haskell code. We omit most of the code here.
+We use a simple lightweight $\textsf{RESTful}$ framework called scotty, and plain $\textsf{HTML}$ and $\textsf{CSS}$ is used for layout and styling. 
+We serve a single plain $\textsf{JavaScript}$ script to connect the $\textsf{UI}$ to our $\textsf{Haskell}$ code. We omit most of the code here.
 
 The web-app is currently not deployed to the web. However, it is possible to run the app by running \verb|stack build| and \verb|stack run|. 
 

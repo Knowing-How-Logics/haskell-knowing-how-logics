@@ -1,12 +1,9 @@
 \section{Introduction}
 
-Ability-based epistemic logics arise in many areas of computer science, where they provide a formal framework for strategic reasoning and AI planning. Several logics in this family have been studied in recent years. In particular, epistemic logics formalising the notion of \textit{knowing how} have received considerable attention because of their conceptual simplicity and strong meta-logical properties.\par
-The simplest version of \textit{knowing how}, $\mathcal{L}_{Kh}$, based on the paper by (Wang 2015\cite{Wang2015}), with the semantics reformulated in (Areces et al. 2021\cite{Areces2021}). 
-This logic captures the agent's ability to guarantee the completion of a task under a given condition. 
-This idea is ideal in a sense, since even though the agent manages to do something under a condition, it does not imply the agent really know how. 
-For example, one can win a lottery does not imply one can guarantee how to win. The uncertainty is involved in this case. 
-Therefore, another logic may be preferred, $\mathcal{L}^U_{Kh}$. In this logic, an agent may have \textit{indistinguishability} among several plans they might take, a critical concept in epistemic logic. 
-Indistinguishable plans form equivalence classes, partitioning the set of available plans. Intuitively, plans considered identical by the agent are placed in the same class. 
-Furthermore, this logic involves multi-agents, as opposed to a single agent. Finally, a new logic, $reg\text{-}\mathcal{L}^U_{Kh}$, a variation of the second version, 
-introduces equivalence classes that are defined in terms of finite automatons. \par
-Additionally, for demo and testing purpose, we've implemented a simple web-application to support model-checking by offering a visual experience and keeping a history of formulas and models (within a session). 
+Knowing-how logics study an agent's ability to achieve goals by suitable action. This makes them particularly relevant to artificial intelligence, especially to planning, where the main question is whether a desired objective can be guaranteed by some plan.\par
+
+The simplest knowing-how logic, $\mathcal{L}_{Kh}$, was first introduced in \cite{Wang2015}. This logic captures an agent's ability to guarantee the achievement of a goal under a given condition. In this sense, the notion is somewhat idealized: even if an agent manages to achieve something under a condition, this does not necessarily mean that the agent genuinely knows how to do it. For example, winning a lottery does not imply knowing how to win it. In such cases, uncertainty becomes essential.\par
+
+To address this, one may move to the uncertainty-based knowing-how logic $\mathcal{L}^U_{Kh}$ \cite{Areces2021}, which supports multi-agent reasoning. In this logic, an agent may have several indistinguishable plans for achieving the same purpose. This adds an epistemic feature to the basic knowing-how logic: plans are grouped into equivalence classes representing the agent's uncertainty about which plan is being followed. Finally, the uncertainty-based logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$ connects this approach with formal language theory by representing such equivalence classes using finite automata.\par
+
+In this work, we present \textsf{KHora}, a model-checking tool for both $\mathcal{L}_{Kh}$ and $reg\text{-}\mathcal{L}^U_{Kh}$ in $\textsf{Haskell}$. For $\mathcal{L}_{Kh}$, the tool implements an explicit bounded search over plans; for $reg\text{-}\mathcal{L}^U_{Kh}$, it realises the algorithms of \cite{Demri2023} in an executable setting. In addition to the core model checkers, \textsf{KHora} includes parsers for both logics, random generators for models and formulas, a collection of tests based on \texttt{QuickCheck} and \texttt{HSpec}, and a lightweight web interface that visualizes the generation of formulas and models.

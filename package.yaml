@@ -1,4 +1,4 @@
-name: report
+name: KHora
 version: 0.1.0.0
 synopsis: A model checker for knowing-how logics
 description: See haskell-knowing-how-logics.pdf
@@ -30,13 +30,13 @@ executables:
     main: Main.lhs
     source-dirs: exec
     dependencies:
-      - report
+      - KHora
 
 tests:
   quickcheck-logic:     
     main:                quickcheck.lhs
     source-dirs:         test
     dependencies:
-      - report
+      - KHora
       - hspec
       - QuickCheck

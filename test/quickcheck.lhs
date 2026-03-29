@@ -1,9 +1,9 @@
 \section{Testing and Validation}
 \label{sec:semanticstests}
 
-We now use the library QuickCheck to randomly generate models and states in order to test several basic semantic and implementation-level properties of both the basic single-agent logic \(\mathcal{L}_{Kh}\) and the multi-agent regular plan logic \(reg\text{-}\mathcal{L}^U_{Kh}\).
+We now use the library \texttt{QuickCheck} to randomly generate models and states in order to test several basic semantic and implementation-level properties of both the basic single-agent logic \(\mathcal{L}_{Kh}\) and the multi-agent regular plan logic \(reg\text{-}\mathcal{L}^U_{Kh}\).
 
-To perform these tests, we first define auxiliary types \texttt{PointedModel} (for single-agent models) and \texttt{PointedRegModel} (for multi-agent models), together with their \texttt{Arbitrary} instances. This allows QuickCheck to choose a random evaluation point inside a randomly generated model.
+To perform these tests, we first define auxiliary types \texttt{PointedModel} (for single-agent models) and \texttt{PointedRegModel} (for multi-agent models), together with their \texttt{Arbitrary} instances. This allows \texttt{QuickCheck} to choose a random evaluation point inside a randomly generated model.
 
 
 \subsection{Tests for \(\mathcal{L}_{Kh}\)}
@@ -178,8 +178,8 @@ main = hspec $ do
 Running \texttt{stack test} in the terminal yields the following relevant test output.
 
 \begin{verbatim}
-report> test (suite: quickcheck-logic)
-                    
+KHora> test (suite: quickcheck-logic)
+                   
 Single-Agent Logic L_Kh
   Boolean: Double Negation Elimination (!!f <=> f) 
     +++ OK, passed 100 tests.
@@ -189,7 +189,7 @@ Single-Agent Logic L_Kh
     +++ OK, passed 100 tests.
   Kh is global: truth does not vary between states 
     +++ OK, passed 100 tests.
-  Empty plan leaves the current state unchanged 
+  Empty plan leaves the current state unchanged
     +++ OK, passed 100 tests.
   Empty plan is strongly executable at every state 
     +++ OK, passed 100 tests.
@@ -200,13 +200,16 @@ Multi-Agent Logic reg-L^U_KH
     +++ OK, passed 100 tests.
   Intersection checking is symmetric: 
   the intersection of L(A1) and L(A2) is non-empty 
-  iff the intersection of L(A2) and L(A1) is non-empty 
+  iff the intersection of L(A2) and L(A1) is non-empty
     +++ OK, passed 100 tests.
   Path automata mirror the LTS transitions 
     +++ OK, passed 100 tests.
 
-Finished in 32.4775 seconds
+Finished in 1.1135 seconds
 10 examples, 0 failures
+
+KHora> Test suite quickcheck-logic passed
+Completed 2 action(s).
 \end{verbatim}
 
 
