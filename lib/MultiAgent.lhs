@@ -1,4 +1,4 @@
-\section{Uncertainty-based Knowing-how logic with Regularity Constraints $reg\text{-}\mathcal{L}^U_{Kh}$}\label{sec:MultiAgent}
+\section{Uncertainty-based Knowing-how Logic with Regularity Constraints $reg\text{-}\mathcal{L}^U_{Kh}$}\label{sec:MultiAgent}
 
 In the framework of \textit{basic knowing how} we introduced above, an agent possesses the ability to achieve the goal $\varphi$ given $\psi$ if and only if he has a plan that is fail-proof, meaning that each partial execution must be completable. In scenarios where the agent lacks this ability, it is only because a sequence of actions cannot be generated due to certain environmental constraints. However, another scenario may also occur: the agent does not know which plan is adequate for the situation. All he can do is blindly apply a plan he thought might work, which may or may not be successful. Such \textit{indistinguishability} among plans establishes an epistemic relation of \textit{knowing that}.\par
 
