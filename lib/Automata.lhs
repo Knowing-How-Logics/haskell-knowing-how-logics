@@ -10,33 +10,32 @@ import Data.List (nub)
 \begin{code}
 type AState = Int
 
-type Action = Int
+type ASymbol = Int
 
 data Automaton = Automaton
-
   { autStates      :: [AState]
-  , autAlphabet    :: [Action]
-  , autTransitions :: [((AState, Action), [AState])]
+  , autAlphabet    :: [ASymbol]
+  , autTransitions :: [((AState, ASymbol), [AState])]
   , autInitial     :: [AState]
   , autFinal       :: [AState]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Ord)
 
--- return all successor states
-successorsA :: Automaton -> AState -> Action -> [AState]
+-- Return all successor states.
+successorsA :: Automaton -> AState -> ASymbol -> [AState]
 successorsA aut q a =
     case lookup (q, a) (autTransitions aut) of
         Just qs -> qs
         Nothing -> []
 
--- determine whether an automaton accepts a word/plan
-accepts :: Automaton -> [Action] -> Bool
+-- Determine whether an automaton accepts a word/plan.
+accepts :: Automaton -> [ASymbol] -> Bool
 accepts aut word =
     any (`elem` autFinal aut) endStates
   where
     startStates :: [AState]
     startStates = autInitial aut
 
-    step :: [AState] -> Action -> [AState]
+    step :: [AState] -> ASymbol -> [AState]
     step qs a =
         nub [ q'
             | q <- qs
@@ -46,8 +45,7 @@ accepts aut word =
     endStates :: [AState]
     endStates = foldl step startStates word
 
-
--- return all reachable states
+-- Return all reachable states.
 reachableA :: Automaton -> [AState]
 reachableA aut = go [] (autInitial aut)
   where
@@ -62,19 +60,17 @@ reachableA aut = go [] (autInitial aut)
                         ]
             in go (q : seen) (queue ++ next)
 
-
 -- L(A) == \emptyset?
 isEmptyLanguage :: Automaton -> Bool
 isEmptyLanguage aut =
     null [ q | q <- reachableA aut, q `elem` autFinal aut ]
 
-
--- L(A_1)\cap L(A_2) == \emptyset?
+-- L(A_1) \cap L(A_2) != \emptyset?
 intersectionNonEmpty :: Automaton -> Automaton -> Bool
 intersectionNonEmpty aut1 aut2 =
     go [] initialPairs
   where
-    alphabet :: [Action]
+    alphabet :: [ASymbol]
     alphabet = nub (autAlphabet aut1 ++ autAlphabet aut2)
 
     initialPairs :: [(AState, AState)]
@@ -88,7 +84,7 @@ intersectionNonEmpty aut1 aut2 =
     isFinalPair (q1, q2) =
         q1 `elem` autFinal aut1 && q2 `elem` autFinal aut2
 
-    stepPair :: (AState, AState) -> Action -> [(AState, AState)]
+    stepPair :: (AState, AState) -> ASymbol -> [(AState, AState)]
     stepPair (q1, q2) a =
         [ (q1', q2')
         | q1' <- successorsA aut1 q1 a
@@ -107,7 +103,6 @@ intersectionNonEmpty aut1 aut2 =
                            ]
             in go (p : seen) (queue ++ next)
 
-
 sanityCheckAutomaton :: Automaton -> Bool
 sanityCheckAutomaton aut =
     not (null (autStates aut))
@@ -117,13 +112,13 @@ sanityCheckAutomaton aut =
     && all (`elem` autStates aut) (autFinal aut)
     && all validTransition (autTransitions aut)
   where
-    validTransition :: ((AState, Action), [AState]) -> Bool
+    validTransition :: ((AState, ASymbol), [AState]) -> Bool
     validTransition ((q, a), qs) =
         q `elem` autStates aut
         && a `elem` autAlphabet aut
         && all (`elem` autStates aut) qs
 
--- for all A_1, A_2: L(A_1)\cap L(A_2) == \emptyset?
+-- For all A_1, A_2: L(A_1) \cap L(A_2) == \emptyset?
 pairwiseDisjointAutomata :: [Automaton] -> Bool
 pairwiseDisjointAutomata auts =
     and [ not (intersectionNonEmpty aut1 aut2)

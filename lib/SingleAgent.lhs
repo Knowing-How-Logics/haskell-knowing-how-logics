@@ -43,18 +43,14 @@ The syntax is modelled following Definition~2.1.\\
 module SingleAgent where
 
 import Data.List (nub, delete)
--- import NoneEmpty including its constructor :|
 import Data.List.NonEmpty (NonEmpty(..), toList)
-import Data.Maybe (fromMaybe)
--- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
 import Test.QuickCheck
+import LTS
 \end{code}
 }
 
 \begin{code}
-type Proposition = Int
-
 data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
     deriving (Eq, Show, Ord)
 
@@ -64,11 +60,6 @@ Following Definition~2.2, we model the LTS as follows.
 When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). \\
 
 \begin{code}
-type Action = Int
-type Plan = [Action]
-type State = Int
-type Valuation = [(State, [Proposition])]
-
 data AbilityMap = LTS {
     states :: NonEmpty State,
     transitions :: Relations,
@@ -94,37 +85,7 @@ For this purpose, we define the following helper functions:
 \end{itemize}
 
 
-\begin{code}
--- Both $R_a$ and $R_\sigma$ share the same type. 
--- Here we model the whole set of relations, without classification.
-type Rel = [(State, State)]
 
--- The family of action-indexed relations (R_a)_a
-type Relations = [(Action, Rel)]
-
--- Image of a state under R_a
-image :: Rel -> State -> [State]
-image r u = [v | (x, v) <- r, x == u]
-
--- Given (R_a)_a and an action x, return R_x
-r_a :: Relations -> Action -> Rel
-r_a rs a = fromMaybe [] (lookup a rs)
-
--- Execute a plan from a given start state
--- This corresponds to R_sigma(u)
-executePlan :: Relations -> State -> Plan -> [State]
-executePlan _  u []       = [u]
-executePlan rs u (a:sigma) =
-    nub (concat [ executePlan rs v sigma | v <- image (r_a rs a) u ])
-
--- Plan is SE or not at a given state
-stronglyExecutableAt :: Relations -> State -> Plan -> Bool
-stronglyExecutableAt _  _ []       = True
-stronglyExecutableAt rs u (a:sigma) =
-    let next = image (r_a rs a) u
-    in  not (null next) &&
-        all (\v -> stronglyExecutableAt rs v sigma) next
-\end{code}
 \subsection{Model checker in Haskell}
 We now implement the semantics in Definition~2.3.
 Note that \texttt{findPlans} enumerates all plans up to a fixed depth (currently 5). 
@@ -162,9 +123,7 @@ isTrue :: (AbilityMap, State) -> Form -> Bool
 \begin{code}
 isTrue _ T = True
 isTrue (m, s) (P p) =
-  case lookup s (valuation m) of
-    Just props -> p `elem` props
-    Nothing -> False
+  p `elem` valuationAt (valuation m) s
 isTrue (m, s) (Neg f) = not (isTrue (m, s) f)
 isTrue (m, s) (Conj f g) = isTrue (m, s) f && isTrue (m, s) g
 \end{code}
