@@ -40,7 +40,7 @@ The syntax is modelled following Definition~2.1.\\
 
 \hide{
 \begin{code}
-module SingleAgent where
+module BasicKH where
 
 import Data.List (nub, delete)
 import Data.List.NonEmpty (NonEmpty(..), toList)

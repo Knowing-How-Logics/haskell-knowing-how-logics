@@ -20,7 +20,7 @@ The web-app is currently not deployed to the web. However, it is possible to run
 
 \hide{
 \begin{code}
--- To allows Text to be interpreted as String
+-- To allow Text to be interpreted as String
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -29,8 +29,8 @@ import Web.Scotty
 import Network.Wai.Middleware.Static
 import Data.Text.Lazy (pack)
 import Test.QuickCheck (generate, arbitrary, Gen)
-import SingleAgent (parseForm, Form, AbilityMap, generateLTS)
-import MultiAgent(parseRegForm, generateRegLTSU)
+import BasicKH
+import RegKH
 
 \end{code}  
 }
@@ -50,28 +50,28 @@ main = scotty 3000 $ do
   
   post "/parse-formula" $ do
     formula <- formParam "formula"        :: ActionM String
-    language   <- formParam "language"    :: ActionM String
+    language <- formParam "language"      :: ActionM String
 
     let parsedForm = case language of
-          "single"  -> show <$> parseForm formula
-          "multi"   -> show <$> parseRegForm formula
-          _ -> error "Invalid formula"
+          "single" -> show <$> parseForm formula
+          "multi"  -> show <$> parseRegForm formula
+          _        -> error "Invalid formula"
 
     text $ pack $ either (\e -> "Parse error: " ++ show e) id parsedForm
   
   post "/parse-model" $ do
-    states <- formParam "states"          :: ActionM Int
-    actions <- formParam "actions"        :: ActionM Int
-    props <- formParam "props"            :: ActionM Int
-    agents <- formParam "agents"          :: ActionM Int
-    language   <- formParam "language"    :: ActionM String
+    numStates <- formParam "states"       :: ActionM Int
+    numActions <- formParam "actions"     :: ActionM Int
+    numProps <- formParam "props"         :: ActionM Int
+    numAgents <- formParam "agents"       :: ActionM Int
+    language <- formParam "language"      :: ActionM String
 
     modelStr <- liftAndCatchIO $ case language of
       "single" -> do
-        m <- generate $ generateLTS states actions props
+        m <- generate $ generateLTS numStates numProps numActions
         return (show m)
       "multi" -> do
-        m <- generate $ generateRegLTSU states props actions agents
+        m <- generate $ generateRegLTSU numStates numProps numActions numAgents
         return (show m)
       _ -> return "Invalid language"
 

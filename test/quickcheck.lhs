@@ -44,8 +44,10 @@ import Test.QuickCheck
 import Test.Hspec
 import Data.List.NonEmpty (toList)
 
-import SingleAgent
-import MultiAgent
+import LTS
+import Automata
+import BasicKH
+import RegKH
 \end{code}
 
 \begin{code}
@@ -77,11 +79,9 @@ instance Arbitrary PointedRegModel where
 -- Helper: check if two formulas are equivalent at a specific point
 isEquivalent :: (AbilityMap, State) -> Form -> Form -> Bool
 isEquivalent (m, s) f1 f2 = isTrue (m, s) f1 == isTrue (m, s) f2
-
 \end{code}
 
 \begin{code}
-
 -- A contradictory formula, used as bottom
 bottomReg :: RegForm
 bottomReg = Not (Disj (Prop 1) (Not (Prop 1)))
@@ -89,8 +89,6 @@ bottomReg = Not (Disj (Prop 1) (Not (Prop 1)))
 -- Helper: number of agents in a reg-LTS^U model, used to ensure that generated formulas only refer to valid agent indices
 numAgentsIn :: RegLTSU -> Int
 numAgentsIn m = length (uncertainty m)
-
-
 \end{code}
 
 \begin{code}
@@ -126,8 +124,6 @@ main = hspec $ do
           stronglyExecutableAt (transitions m) s []
 
   describe "Multi-Agent Logic reg-L^U_KH" $ do
-
-  
 
     it "Vacuous Precondition: knowing how from contradiction holds vacuously" $
       property $ \(PRM (m, s)) agent ->
@@ -168,12 +164,11 @@ main = hspec $ do
           in conjoin
               [ getAutNext aut s a === getLtsNext m s a
               | s <- statesM m
-              , a <- actionsA aut
+              , a <- autAlphabet aut
               ]
 
 \end{code}
 }
-
 
 Running \texttt{stack test} in the terminal yields the following relevant test output.
 
