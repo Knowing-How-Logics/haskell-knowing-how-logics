@@ -3,6 +3,7 @@
 module Automata where
 
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 \end{code}
 }
 
@@ -23,9 +24,7 @@ data Automaton = Automaton
 -- Return all successor states.
 successorsA :: Automaton -> AState -> ASymbol -> [AState]
 successorsA aut q a =
-    case lookup (q, a) (autTransitions aut) of
-        Just qs -> qs
-        Nothing -> []
+    fromMaybe [] (lookup (q, a) (autTransitions aut))
 
 -- Determine whether an automaton accepts a word/plan.
 accepts :: Automaton -> [ASymbol] -> Bool

@@ -132,7 +132,7 @@ data Digraph = Digraph
 \begin{code}
 -- Helper function to get next automaton states under a given symbol
 getAutNext :: Automaton -> AState -> ASymbol -> [AState]
-getAutNext aut q a = successorsA aut q a
+getAutNext = successorsA
 
 -- Helper function to get next LTS states under a given action
 getLtsNext :: RegLTSU -> State -> Action -> [State]
