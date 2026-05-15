@@ -96,27 +96,14 @@ The syntax is modelled following Definition~3.1.\\
 
 \hide{
 \begin{code}
-module MultiAgent where
+module RegKH where
 
-import SingleAgent
-  ( Proposition
-  , Action
-  , Plan
-  , State
-  , Valuation
-  , Rel
-  , Relations
-  , executePlan
-  , stronglyExecutableAt
-  , image
-  , r_a
-  )
+import LTS
+import Automata
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Test.QuickCheck
-
--- import parsec but hide State to avoid conflicts
 import Text.Parsec hiding (State)
 \end{code}
 }
@@ -126,62 +113,44 @@ type Agent = Int
 
 data RegForm = Prop Proposition | Not RegForm | Disj RegForm RegForm | KHI Agent RegForm RegForm
     deriving (Eq, Show, Ord)
-
-\end{code}
-
-The automaton type implements Definition~3.2.\\
-
-\begin{code}
-type Successors = [State]
-type ActionAtState = (State, Action) 
-
-data Automaton = ATMN {
-    statesA :: [State],
-    actionsA :: [Action],
-    transitionsA :: [(ActionAtState, Successors)],
-    initial :: [State],
-    final :: [State]
-} deriving (Eq, Show, Ord)
 \end{code}
 
 The product digraph from Definition~3.3 is implemented below. 
 The helper functions \texttt{getAutNext} and \texttt{getLtsNext} retrieve successor states in the automaton and LTS respectively. They are omitted here. \\
+
 \begin{code}
-type GVertex = (State, State) -- (Automaton State, LTS State)
+type GVertex = (AState, State) -- (Automaton state, LTS state)
 type GEdge = (GVertex, GVertex)
 
-data Digraph = Digraph {
-    vSet :: [GVertex],
-    eSet :: [GEdge]
-} deriving (Eq, Show, Ord)
-
+data Digraph = Digraph
+    { vSet :: [GVertex]
+    , eSet :: [GEdge]
+    } deriving (Eq, Show, Ord)
 \end{code}
 
 \hide{
 \begin{code}
-
--- Helper function to get next automaton states under a given action
-getAutNext :: Automaton -> State -> Action -> [State]
-getAutNext atmn q a = fromMaybe [] (lookup (q, a) (transitionsA atmn))
+-- Helper function to get next automaton states under a given symbol
+getAutNext :: Automaton -> AState -> ASymbol -> [AState]
+getAutNext = successorsA
 
 -- Helper function to get next LTS states under a given action
 getLtsNext :: RegLTSU -> State -> Action -> [State]
-getLtsNext m t a = image (r_a (relationsM m) a) t
+getLtsNext m t a = image (rA (relationsM m) a) t
 
 -- Build the product digraph G = (V, E)
 buildDigraph :: RegLTSU -> Automaton -> Digraph
-buildDigraph m atmn = Digraph nodes edges
+buildDigraph m aut = Digraph nodes edges
   where
-    nodes = [(q, s) | q <- statesA atmn, s <- statesM m]
+    nodes = [(q, s) | q <- autStates aut, s <- statesM m]
     edges = [ ((q, t), (q', t')) 
             | (q, t) <- nodes
-            , act    <- actionsA atmn
-            , q'     <- getAutNext atmn q act
+            , act    <- autAlphabet aut
+            , q'     <- getAutNext aut q act
             , t'     <- getLtsNext m t act
             ]
 \end{code}
 }
-
 The following functions implement the relational notions from Definition~3.4.\\
 
 \begin{code}
@@ -193,7 +162,8 @@ rPiU :: Relations -> State -> PlanSet -> [State]
 
 \hide{
 \begin{code}
-rPiU rs u plans = nub (concat [executePlan rs u sigma | sigma <- plans])
+rPiU rs u plans =
+    nub (concat [executePlan rs u sigma | sigma <- plans])
 \end{code}
 }
 
@@ -201,9 +171,11 @@ rPiU rs u plans = nub (concat [executePlan rs u sigma | sigma <- plans])
 -- R_pi(X) = union of R_pi(u) for all u in X
 rPiX :: Relations -> [State] -> PlanSet -> [State]
 \end{code}
+
 \hide{
 \begin{code}
-rPiX rs xs plans = nub (concat [rPiU rs u plans | u <- xs])
+rPiX rs xs plans =
+    nub (concat [rPiU rs u plans | u <- xs])
 \end{code}
 }
 
@@ -214,7 +186,8 @@ seSigma :: [State] -> Relations -> Plan -> [State]
 
 \hide{
 \begin{code}
-seSigma sts rs sigma = [u | u <- sts, stronglyExecutableAt rs u sigma]
+seSigma sts rs sigma =
+    [u | u <- sts, stronglyExecutableAt rs u sigma]
 \end{code}
 }
 
@@ -225,21 +198,23 @@ sePi :: [State] -> Relations -> PlanSet -> [State]
 
 \hide{
 \begin{code}
-sePi sts rs plans = [u | u <- sts, all (stronglyExecutableAt rs u) plans]
+sePi sts rs plans =
+    [u | u <- sts, all (stronglyExecutableAt rs u) plans]
 \end{code}
 }
 
-The functions above are not used directly in the model-checking algorithm, but are included to align with the notions from the paper. For the same reason, we omit the implementation of definition~3.5. Because 3.4 and 3.5 are simply same concepts but in different perspectives.\par
+The functions above are not used directly in the model-checking algorithm, but are included to keep the implementation close to the relational notions from the paper. Definition~3.5 is not implemented separately, since it expresses the same ideas from the automata-language perspective.\par
 
 Finally, the reg-LTS$^U$ model implements Definition~3.6.\\
+
 \begin{code}
 type Uncertainty = [(Agent, [Automaton])] -- U_i = {A_1,...}, for each agent i
 
-data RegLTSU = RegLTSU{ 
-        statesM :: [State],
-        relationsM :: Relations,
-        uncertainty :: Uncertainty,
-        valuationM :: Valuation -- use the Valuation from singleAgent
+data RegLTSU = RegLTSU
+    { statesM     :: [State]
+    , relationsM  :: Relations
+    , uncertainty :: Uncertainty
+    , valuationM  :: Valuation -- shared valuation type from the LTS module
     } deriving (Eq, Show, Ord)
 
 -- Given an agent i, return U_i = [A_1,...]
@@ -356,27 +331,27 @@ In Haskell:\\
 --   (i)  the automaton has a transition from q under a, and
 --   (ii) the LTS has no successor from t under a.
 badVertices :: RegLTSU -> Automaton -> [GVertex]
-badVertices m atmn =
+badVertices m aut =
     nub [ (q, t)
-        | q <- statesA atmn,
-        t <- statesM m,
-        a <- actionsA atmn,
-        not (null (getAutNext atmn q a)),  --  delta(q,a) != empty
-        null (getLtsNext m t a)            --  R_a(t) == empty
+        | q <- autStates aut
+        , t <- statesM m
+        , a <- autAlphabet aut
+        , not (null (getAutNext aut q a))  --  delta(q,a) != empty
+        , null (getLtsNext m t a)          --  R_a(t) == empty
         ]
  
 -- checker whether there is a path from (q0, s) to a bad vertex. 
 -- If so, return True. This means that s not in SE(L(A)).
 -- Else, return False. This means that s in SE(L(A)).
 checkSE :: RegLTSU -> State -> Automaton -> Bool
-checkSE m s atmn =
-    let g   = buildDigraph m atmn
-        bad = badVertices m atmn
-    in  any (\q0 -> dfsReachable g (q0, s) bad []) (initial atmn)
+checkSE m s aut =
+    let g   = buildDigraph m aut
+        bad = badVertices m aut
+    in  any (\q0 -> dfsReachable g (q0, s) bad []) (autInitial aut)
 
 checkCond1 :: RegLTSU -> Automaton -> [State] -> Bool
-checkCond1 m atmn =
-    all (\s -> not (checkSE m s atmn))
+checkCond1 m aut =
+    all (\s -> not (checkSE m s aut))
 \end{code}
 
 Let $\mathcal{A}_1$ and $\mathcal{A}_2$ be two automata. To check whether $L(\mathcal{A}_1)\cap L(\mathcal{A}_2) \neq \emptyset$, it suffices to construct the product automaton and check whether any accepting state pair in $F_1 \times F_2$ is reachable from some initial state pair in $I_1 \times I_2$.\\
@@ -427,40 +402,16 @@ In Haskell:\\
 -- Construct A_(t1, t2)
 -- This automaton accepts all plans from t1 to t2
 buildPathAutomaton :: RegLTSU -> State -> State -> Automaton
-buildPathAutomaton m t1 t2 = ATMN
-    { statesA      = statesM m,
-    actionsA     = acts,
-    transitionsA = [ ((s, a), getLtsNext m s a) | s <- statesM m, a <- acts],
-    initial      = [t1],
-    final        = [t2]
+buildPathAutomaton m t1 t2 = Automaton
+    { autStates      = statesM m
+    , autAlphabet    = acts
+    , autTransitions = [ ((s, a), getLtsNext m s a) | s <- statesM m, a <- acts ]
+    , autInitial     = [t1]
+    , autFinal       = [t2]
     }
   where
     -- Collect all actions that appear in the LTS relations
     acts = nub [a | (a, _) <- relationsM m]
- 
--- Check the intersection of L(A1) and L(A2) is empty or not
-intersectionNonEmpty :: Automaton -> Automaton -> Bool
-intersectionNonEmpty a1 a2 =
-    any (\sv -> dfsReachable prodGraph sv targets []) startVs
-  where
-    -- Shared actions
-    sharedActs = nub [a | a <- actionsA a1, a `elem` actionsA a2]
-
-    -- Product graph vertices and edges
-    prodNodes = [(q1, q2) | q1 <- statesA a1, q2 <- statesA a2]
-    prodEdges = [ ((q1, q2), (q1', q2'))
-                | (q1, q2) <- prodNodes,
-                a          <- sharedActs,
-                q1'        <- getAutNext a1 q1 a,
-                q2'        <- getAutNext a2 q2 a
-                ]
-    prodGraph = Digraph prodNodes prodEdges
-
-    -- Start from any pair of initial states
-    startVs = [(q1, q2) | q1 <- initial a1, q2 <- initial a2]
-
-    -- Target: any pair of accepting states
-    targets = [(q1, q2) | q1 <- final a1, q2 <- final a2]
  
 -- Check for each A: for all (t1,t2): L(A) \cap L(A_(t1, t2)) = empty?
 -- We check the emptiness of the intersection by checking the reachability of the product graph(automaton)
@@ -487,9 +438,7 @@ isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
 \hide{
 \begin{code}
 isTrueReg (m, s) (Prop p) =
-    case lookup s (valuationM m) of
-        Just props -> p `elem` props
-        Nothing -> False
+    p `elem` valuationAt (valuationM m) s
 isTrueReg (m, s) (Not f) =
     not (isTrueReg (m, s) f)
 isTrueReg (m, s) (Disj f g) =
@@ -590,29 +539,6 @@ In addition, we implement a sanity check on the uncertainty component. This veri
 
 \hide{
 \begin{code}
-sanityCheckAutomaton :: Automaton -> Bool
-sanityCheckAutomaton aut =
-    not (null (statesA aut))
-    && not (null (actionsA aut))
-    && not (null (initial aut))
-    && not (null (final aut))
-    && all (`elem` statesA aut) (initial aut)
-    && all (`elem` statesA aut) (final aut)
-    && all validTransition (transitionsA aut)
-  where
-    validTransition ((q, a), nexts) =
-        q `elem` statesA aut
-        && a `elem` actionsA aut
-        && all (`elem` statesA aut) nexts
-
-pairwiseDisjointAutomata :: [Automaton] -> Bool
-pairwiseDisjointAutomata auts =
-    and [ not (intersectionNonEmpty a1 a2)
-        | (i, a1) <- zip [0 :: Int ..] auts,
-        (j, a2) <- zip [0 :: Int ..] auts,
-        i < j
-        ]
-
 sanityCheckAgentAutomata :: [Automaton] -> Bool
 sanityCheckAgentAutomata auts =
     all sanityCheckAutomaton auts && pairwiseDisjointAutomata auts
@@ -638,7 +564,7 @@ generateRegLTSU n m k numAgents = do
     let a' = max 1 numAgents
 
     let sts = [1 .. n']
-    let acts = [1 .. fromIntegral k']
+    let acts = [1 .. k']
     let props = [1 .. m']
 
     -- Generate transitions
@@ -695,12 +621,12 @@ generateAutomaton sts acts = do
     initStates <- sublistOf qs
     finalStates <- sublistOf qs
 
-    return $ ATMN
-        { statesA = qs
-        , actionsA = acts
-        , transitionsA = trans
-        , initial = if null initStates then [head qs] else initStates
-        , final = if null finalStates then [head qs] else finalStates
+    return $ Automaton
+        { autStates = qs
+        , autAlphabet = acts
+        , autTransitions = trans
+        , autInitial = if null initStates then [head qs] else initStates
+        , autFinal = if null finalStates then [head qs] else finalStates
         }
 \end{code}
 }
