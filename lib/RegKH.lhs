@@ -136,7 +136,7 @@ getAutNext aut q a = successorsA aut q a
 
 -- Helper function to get next LTS states under a given action
 getLtsNext :: RegLTSU -> State -> Action -> [State]
-getLtsNext m t a = image (r_a (relationsM m) a) t
+getLtsNext m t a = image (rA (relationsM m) a) t
 
 -- Build the product digraph G = (V, E)
 buildDigraph :: RegLTSU -> Automaton -> Digraph

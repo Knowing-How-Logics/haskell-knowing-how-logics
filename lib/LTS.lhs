@@ -8,7 +8,7 @@ module LTS
   , Relations
   , Valuation
   , image
-  , r_a
+  , rA
   , executePlan
   , stronglyExecutableAt
   , actionsOf
@@ -35,8 +35,8 @@ image r u =
 
 -- Given a family of action-indexed relations and an action a,
 -- return the corresponding relation R_a
-r_a :: Relations -> Action -> Rel
-r_a rs a =
+rA :: Relations -> Action -> Rel
+rA rs a =
   fromMaybe [] (lookup a rs)
 
 -- Execute a plan from a state.
@@ -46,7 +46,7 @@ executePlan _  u []       = [u]
 executePlan rs u (a:sigma) =
   nub
     [ t
-    | v <- image (r_a rs a) u
+    | v <- image (rA rs a) u
     , t <- executePlan rs v sigma
     ]
 
@@ -55,7 +55,7 @@ executePlan rs u (a:sigma) =
 stronglyExecutableAt :: Relations -> State -> Plan -> Bool
 stronglyExecutableAt _  _ [] = True
 stronglyExecutableAt rs u (a:sigma) =
-  let next = image (r_a rs a) u
+  let next = image (rA rs a) u
   in not (null next)
      && all (\v -> stronglyExecutableAt rs v sigma) next
 
@@ -70,7 +70,7 @@ stepSet rs xs a =
   nub
     [ y
     | x <- xs
-    , y <- image (r_a rs a) x
+    , y <- image (rA rs a) x
     ]
 
 -- Read the valuation of a state
