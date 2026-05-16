@@ -273,6 +273,33 @@ khComplete m phiStates psiStates =
         | a <- acts
         ]
 
+findWitnessPSpaceBySets :: AbilityMap -> [State] -> [State] -> Maybe Plan
+findWitnessPSpaceBySets m phiStates psiStates =
+    pathTo acceptingKHProductState next initialState
+  where
+    rs :: Relations
+    rs = transitions m
+
+    acts :: [Action]
+    acts = actionsOf rs
+
+    allStates :: [State]
+    allStates = toList (states m)
+
+    negPsiStates :: [State]
+    negPsiStates =
+        [ s | s <- allStates, s `notElem` psiStates ]
+
+    initialState :: KHProductState
+    initialState =
+        initialKHProductState phiStates negPsiStates
+
+    next :: KHProductState -> [(Action, KHProductState)]
+    next current =
+        [ (a, stepKHProductState rs a current)
+        | a <- acts
+        ]
+
 truthSetPSpace :: AbilityMap -> Form -> [State]
 truthSetPSpace m f =
     [ s | s <- toList (states m), isTruePSpace (m, s) f ]
@@ -294,6 +321,13 @@ isTruePSpace (m, _) (KH f g) =
 -- Infix alias for the complete satisfaction relation
 (|=*) :: (AbilityMap, State) -> Form -> Bool
 (|=*) = isTruePSpace
+
+findWitnessPSpace :: AbilityMap -> Form -> Form -> Maybe Plan
+findWitnessPSpace m f g =
+    findWitnessPSpaceBySets m phiStates psiStates
+  where
+    phiStates = truthSetPSpace m f
+    psiStates = truthSetPSpace m g
 \end{code}
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
