@@ -3,6 +3,7 @@
 module GraphSearch
   ( existsReachable
   , existsReachableFromAny
+  , pathTo
   ) where
 
 import qualified Data.Set as S
@@ -27,6 +28,29 @@ existsReachableFromAny isGoal next starts =
             let visited' = S.insert x visited
                 queue'   = foldl (|>) queue (next x)
             in go visited' queue'
+
+
+
+--  Find a path from an initial state to a goal state.
+--   The successor function returns labelled transitions:
+--   each pair (a, s') means that action/label a leads to s'.
+--   If a goal is reachable, the function returns the list of labels.
+pathTo :: (Ord s) => (s -> Bool) -> (s -> [(a, s)]) -> s -> Maybe [a]
+pathTo isGoal next start =
+    go S.empty [(start, [])]
+  where
+    go _ [] = Nothing
+    go visited ((x, path):queue)
+        | x `S.member` visited = go visited queue
+        | isGoal x             = Just (reverse path)
+        | otherwise            =
+            let visited' = S.insert x visited
+                newItems =
+                    [ (x', a:path)
+                    | (a, x') <- next x
+                    ]
+            in go visited' (queue ++ newItems)
 \end{code}
+
 }
 
