@@ -105,6 +105,8 @@ import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Test.QuickCheck
 import Text.Parsec hiding (State)
+import GraphSearch
+
 \end{code}
 }
 
@@ -259,16 +261,10 @@ In Haskell:\\
 -- Successors of a vertex in the digraph
 successors :: Digraph -> GVertex -> [GVertex]
 successors g v = [v' | (u, v') <- eSet g, u == v]
- 
--- DFS reachability: is any vertex in targetSet reachable from start?
--- The type can be read as: digraph -> start -> targets -> visited_set -> Bool
-dfsReachable :: Digraph -> GVertex -> [GVertex] -> [GVertex] -> Bool
-dfsReachable _ start targetSet _
-    | start `elem` targetSet = True
-dfsReachable _ start _ visited
-    | start `elem` visited = False
-dfsReachable g start targetSet visited =
-    any (\v -> dfsReachable g v targetSet (start : visited)) (successors g start)
+
+reachableTarget :: Digraph -> GVertex -> [GVertex] -> Bool
+reachableTarget g start targetSet =
+    existsReachable (`elem` targetSet) (successors g) start
 \end{code}
 
 The algorithm that checks Condition (1) from \cite{Demri2023} works as follows:
@@ -345,9 +341,10 @@ badVertices m aut =
 -- Else, return False. This means that s in SE(L(A)).
 checkSE :: RegLTSU -> State -> Automaton -> Bool
 checkSE m s aut =
-    let g   = buildDigraph m aut
-        bad = badVertices m aut
-    in  any (\q0 -> dfsReachable g (q0, s) bad []) (autInitial aut)
+    let g      = buildDigraph m aut
+        bad    = badVertices m aut
+        starts = [(q0, s) | q0 <- autInitial aut]
+    in existsReachableFromAny (`elem` bad) (successors g) starts
 
 checkCond1 :: RegLTSU -> Automaton -> [State] -> Bool
 checkCond1 m aut =

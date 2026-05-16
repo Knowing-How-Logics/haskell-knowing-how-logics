@@ -47,6 +47,7 @@ import Data.List.NonEmpty (NonEmpty(..), toList)
 import Text.Parsec hiding (State)
 import Test.QuickCheck
 import LTS
+import GraphSearch
 \end{code}
 }
 
@@ -247,7 +248,7 @@ stepKHProductState rs a st =
 
 khComplete :: AbilityMap -> [State] -> [State] -> Bool
 khComplete m phiStates psiStates =
-    dfs [] initialState
+    existsReachable acceptingKHProductState next initialState
   where
     rs :: Relations
     rs = transitions m
@@ -266,15 +267,11 @@ khComplete m phiStates psiStates =
     initialState =
         initialKHProductState phiStates negPsiStates
 
-    dfs :: [KHProductState] -> KHProductState -> Bool
-    dfs visited current
-        | acceptingKHProductState current = True
-        | current `elem` visited          = False
-        | otherwise =
-            any (dfs (current : visited))
-                [ stepKHProductState rs a current
-                | a <- acts
-                ]
+    next :: KHProductState -> [KHProductState]
+    next current =
+        [ stepKHProductState rs a current
+        | a <- acts
+        ]
 
 truthSetPSpace :: AbilityMap -> Form -> [State]
 truthSetPSpace m f =

@@ -4,6 +4,7 @@ module Automata where
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
+import GraphSearch
 \end{code}
 }
 
@@ -67,7 +68,7 @@ isEmptyLanguage aut =
 -- L(A_1) \cap L(A_2) != \emptyset?
 intersectionNonEmpty :: Automaton -> Automaton -> Bool
 intersectionNonEmpty aut1 aut2 =
-    go [] initialPairs
+    existsReachableFromAny isFinalPair next initialPairs
   where
     alphabet :: [ASymbol]
     alphabet = nub (autAlphabet aut1 ++ autAlphabet aut2)
@@ -83,24 +84,14 @@ intersectionNonEmpty aut1 aut2 =
     isFinalPair (q1, q2) =
         q1 `elem` autFinal aut1 && q2 `elem` autFinal aut2
 
-    stepPair :: (AState, AState) -> ASymbol -> [(AState, AState)]
-    stepPair (q1, q2) a =
-        [ (q1', q2')
-        | q1' <- successorsA aut1 q1 a
-        , q2' <- successorsA aut2 q2 a
-        ]
-
-    go :: [(AState, AState)] -> [(AState, AState)] -> Bool
-    go _ [] = False
-    go seen (p:queue)
-        | p `elem` seen = go seen queue
-        | isFinalPair p = True
-        | otherwise =
-            let next = nub [ p'
-                           | a <- alphabet
-                           , p' <- stepPair p a
-                           ]
-            in go (p : seen) (queue ++ next)
+    next :: (AState, AState) -> [(AState, AState)]
+    next (q1, q2) =
+        nub
+            [ (q1', q2')
+            | a <- alphabet
+            , q1' <- successorsA aut1 q1 a
+            , q2' <- successorsA aut2 q2 a
+            ]
 
 sanityCheckAutomaton :: Automaton -> Bool
 sanityCheckAutomaton aut =
