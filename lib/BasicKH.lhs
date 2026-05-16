@@ -42,11 +42,12 @@ The syntax is modelled following Definition~2.1.\\
 \begin{code}
 module BasicKH where
 
-import Data.List (nub, delete)
+import Data.List (nub, delete, sort)
 import Data.List.NonEmpty (NonEmpty(..), toList)
 import Text.Parsec hiding (State)
 import Test.QuickCheck
 import LTS
+import GraphSearch
 \end{code}
 }
 
@@ -100,7 +101,7 @@ statesSatisifying m f = [s | s <- toList (states m), isTrue (m, s) f]
 
 -- Given an LTS, find all plans.
 findPlans :: AbilityMap -> [Plan]
-findPlans m = nub (concatMap (plansFrom depth) (toList (states m)))
+findPlans m = [] : nub (concatMap (plansFrom depth) (toList (states m)))
   where
     -- For now we limit the depth to avoid infinite loops.
     depth = 5
@@ -147,6 +148,152 @@ isTrue (m, _) (KH f g) =
 -- Infix alias for the satisfaction relation
 (|=) :: (AbilityMap, State) -> Form -> Bool
 (|=) = isTrue
+\end{code}
+
+\subsubsection{Complete model checker}
+
+
+\begin{code}
+data SEFlag = SEOk | SEBad
+    deriving (Eq, Show, Ord)
+
+type SEComponent = (State, ([State], SEFlag))
+-- The first State records the original precondition state.
+-- The list records the current set of states reachable after the current action prefix.
+
+type BadPairComponent = ((State, State), [State])
+-- ((t1,t2), xs) tracks states currently reachable from t1.
+-- t2 is a bad target, i.e. a state not satisfying the goal formula.
+
+data KHProductState = KHProductState
+    { seComponentsKH  :: [SEComponent]
+    , badComponentsKH :: [BadPairComponent]
+    } deriving (Eq, Show, Ord)
+
+normaliseStates :: [State] -> [State]
+normaliseStates = sort . nub
+
+normaliseSEComponent :: SEComponent -> SEComponent
+normaliseSEComponent (s, (xs, flag)) =
+    (s, (normaliseStates xs, flag))
+
+normaliseBadComponent :: BadPairComponent -> BadPairComponent
+normaliseBadComponent (pair, xs) =
+    (pair, normaliseStates xs)
+
+normaliseKHProductState :: KHProductState -> KHProductState
+normaliseKHProductState st =
+    KHProductState
+        { seComponentsKH  = map normaliseSEComponent (seComponentsKH st)
+        , badComponentsKH = map normaliseBadComponent (badComponentsKH st)
+        }
+
+allHaveSuccessor :: Relations -> [State] -> Action -> Bool
+allHaveSuccessor rs xs a =
+    all (\x -> not (null (image (rA rs a) x))) xs
+
+stepSEComponent :: Relations -> Action -> SEComponent -> SEComponent
+stepSEComponent rs a (s0, (xs, flag)) =
+    case flag of
+        SEBad ->
+            (s0, (xs, SEBad))
+        SEOk ->
+            let okNext = allHaveSuccessor rs xs a
+                xs'    = stepSet rs xs a
+            in if okNext
+               then (s0, (xs', SEOk))
+               else (s0, (xs', SEBad))
+
+stepBadComponent :: Relations -> Action -> BadPairComponent -> BadPairComponent
+stepBadComponent rs a (pair, xs) =
+    (pair, stepSet rs xs a)
+
+initialKHProductState :: [State] -> [State] -> KHProductState
+initialKHProductState phiStates negPsiStates =
+    normaliseKHProductState $
+        KHProductState
+            { seComponentsKH =
+                [ (s, ([s], SEOk))
+                | s <- phiStates
+                ]
+            , badComponentsKH =
+                [ ((t1, t2), [t1])
+                | t1 <- phiStates
+                , t2 <- negPsiStates
+                ]
+            }
+
+acceptingKHProductState :: KHProductState -> Bool
+acceptingKHProductState st =
+    all seAccepts (seComponentsKH st)
+    && all badPairAccepts (badComponentsKH st)
+  where
+    seAccepts :: SEComponent -> Bool
+    seAccepts (_, (_, flag)) =
+        flag == SEOk
+
+    badPairAccepts :: BadPairComponent -> Bool
+    badPairAccepts ((_, badTarget), xs) =
+        badTarget `notElem` xs
+
+stepKHProductState :: Relations -> Action -> KHProductState -> KHProductState
+stepKHProductState rs a st =
+    normaliseKHProductState $
+        KHProductState
+            { seComponentsKH =
+                map (stepSEComponent rs a) (seComponentsKH st)
+            , badComponentsKH =
+                map (stepBadComponent rs a) (badComponentsKH st)
+            }
+
+khComplete :: AbilityMap -> [State] -> [State] -> Bool
+khComplete m phiStates psiStates =
+    existsReachable acceptingKHProductState next initialState
+  where
+    rs :: Relations
+    rs = transitions m
+
+    acts :: [Action]
+    acts = actionsOf rs
+
+    allStates :: [State]
+    allStates = toList (states m)
+
+    negPsiStates :: [State]
+    negPsiStates =
+        [ s | s <- allStates, s `notElem` psiStates ]
+
+    initialState :: KHProductState
+    initialState =
+        initialKHProductState phiStates negPsiStates
+
+    next :: KHProductState -> [KHProductState]
+    next current =
+        [ stepKHProductState rs a current
+        | a <- acts
+        ]
+
+truthSetPSpace :: AbilityMap -> Form -> [State]
+truthSetPSpace m f =
+    [ s | s <- toList (states m), isTruePSpace (m, s) f ]
+
+isTruePSpace :: (AbilityMap, State) -> Form -> Bool
+isTruePSpace _ T = True
+isTruePSpace (m, s) (P p) =
+    p `elem` valuationAt (valuation m) s
+isTruePSpace (m, s) (Neg f) =
+    not (isTruePSpace (m, s) f)
+isTruePSpace (m, s) (Conj f g) =
+    isTruePSpace (m, s) f && isTruePSpace (m, s) g
+isTruePSpace (m, _) (KH f g) =
+    khComplete m phiStates psiStates
+  where
+    phiStates = truthSetPSpace m f
+    psiStates = truthSetPSpace m g
+
+-- Infix alias for the complete satisfaction relation
+(|=*) :: (AbilityMap, State) -> Form -> Bool
+(|=*) = isTruePSpace
 \end{code}
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
