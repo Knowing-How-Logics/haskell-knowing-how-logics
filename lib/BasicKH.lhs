@@ -36,7 +36,7 @@ $\mathcal{M}, s \models Kh(\psi, \varphi)$ & \textit{iff} & & there exists a $\s
 The $Kh(\psi,\varphi)$ can be interpreted as "the agent knows how to achieve $\varphi$ given $\psi$". Notice that the $Kh$ is a global modality. Namely, either it holds for all states, or none of them.
 
 \subsection{Haskell Representation}
-The syntax is modelled following Definition~2.1.\\
+The syntax is modelled following Definition~2.1. By using the $\mathsf{PSPACE}$-algorithm from \cite{Demri2023}.\\
 
 \hide{
 \begin{code}
@@ -57,6 +57,8 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 
 \end{code}
 
+\hide{
+
 Following Definition~2.2, we model the LTS as follows.
 When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). \\
 
@@ -69,35 +71,11 @@ data AbilityMap = LTS {
 
 \end{code}
 
-The relations and strong executability in Definition~2.2 are implemented below.
-Both of these are binary relations on states. Therefore, in our implementation, we use the same Haskell type \texttt{Rel} to represent them, since both can be understood as sets of pairs of states.
-
-To represent the family of atomic relations $R = (R_a)_a$, we index relations by actions. This gives rise to the type \texttt{Relations}, corresponding to the collection of action-labelled transitions in the literature.
-
-We do not model $R_{\sigma}$ explicitly as a separate data structure. Instead, we only implement the operations needed to reason about plan execution and strong executability.
-
-For this purpose, we define the following helper functions:
-
-\begin{itemize}
-    \item \texttt{image}, which computes the image of a state under a relation, i.e. it collects all successor states of a given state;
-    \item \texttt{r\_a}, which takes an action $a$ and the family of relations $R$, and returns the indexed relation $R_a$;
-    \item \texttt{executePlan}, which computes all possible end states obtained after executing a plan from a given initial state;
-    \item \texttt{stronglyExecutableAt}, which determines whether a plan is strongly executable at a given state.
-\end{itemize}
-
-
-
-\subsection{Model checker in Haskell}
-We now implement the semantics in Definition~2.3.
-Note that \texttt{findPlans} enumerates all plans up to a fixed depth (currently 5). 
-This is a bounded approximation: if a witness plan longer than the bound exists, the checker will not find it. 
-A complete decision procedure would require another $\mathsf{PSPACE\text{-}Complete}$ algorithm in Theorem 1 from \cite{Demri2023}.\\
-
-
 \begin{code}
 -- Given an LTS and formula, returns the states that satisfy said formula
-statesSatisifying :: AbilityMap -> Form -> [State]
-statesSatisifying m f = [s | s <- toList (states m), isTrue (m, s) f]
+statesSatisifyingBounded :: AbilityMap -> Form -> [State]
+statesSatisifyingBounded m f =
+    [s | s <- toList (states m), isTrueBounded (m, s) f]
 
 -- Given an LTS, find all plans.
 findPlans :: AbilityMap -> [Plan]
@@ -117,40 +95,35 @@ findPlans m = [] : nub (concatMap (plansFrom depth) (toList (states m)))
         [ [a] | (a,(x,_)) <- edges, x == s ] -- single action plans
         ++ [ a:p | (a,(x,y)) <- edges, x == s, p <- plansFrom (d-1) y ]
 
-isTrue :: (AbilityMap, State) -> Form -> Bool
+
 \end{code}
 
-\hide{
+
 \begin{code}
-isTrue _ T = True
-isTrue (m, s) (P p) =
+isTrueBounded :: (AbilityMap, State) -> Form -> Bool
+isTrueBounded _ T = True
+isTrueBounded (m, s) (P p) =
   p `elem` valuationAt (valuation m) s
-isTrue (m, s) (Neg f) = not (isTrue (m, s) f)
-isTrue (m, s) (Conj f g) = isTrue (m, s) f && isTrue (m, s) g
-\end{code}
-}
+isTrueBounded (m, s) (Neg f) = not (isTrueBounded (m, s) f)
+isTrueBounded (m, s) (Conj f g) = isTrueBounded (m, s) f && isTrueBounded (m, s) g
 
-\begin{code}
 -- KH is NOT local; its truth does not depend on the state at which it is evaluated. 
 -- KH either holds at all states, or none of them. 
-isTrue (m, _) (KH f g) = 
+isTrueBounded (m, _) (KH f g) = 
     any (\a -> 
         all (\s -> 
             stronglyExecutableAt rs s a 
-            && all (\t -> isTrue (m,t) g) (executePlan rs s a)
+            && all (\t -> isTrueBounded (m,t) g) (executePlan rs s a)
         ) statesF
     ) candidatePlans
   where
     rs = transitions m
-    statesF = statesSatisifying m f
+    statesF = statesSatisifyingBounded m f
     candidatePlans = findPlans m
 
--- Infix alias for the satisfaction relation
-(|=) :: (AbilityMap, State) -> Form -> Bool
-(|=) = isTrue
 \end{code}
+}
 
-\subsubsection{Complete model checker}
 
 
 \begin{code}
@@ -190,7 +163,11 @@ normaliseKHProductState st =
 
 allHaveSuccessor :: Relations -> [State] -> Action -> Bool
 allHaveSuccessor rs xs a =
-    all (\x -> not (null (image (rA rs a) x))) xs
+    all (hasSuccessor rs a) xs
+
+hasSuccessor :: Relations -> Action -> State -> Bool
+hasSuccessor rs a x =
+    not (null (image (rA rs a) x))
 
 stepSEComponent :: Relations -> Action -> SEComponent -> SEComponent
 stepSEComponent rs a (s0, (xs, flag)) =
@@ -300,34 +277,34 @@ findWitnessPSpaceBySets m phiStates psiStates =
         | a <- acts
         ]
 
-truthSetPSpace :: AbilityMap -> Form -> [State]
-truthSetPSpace m f =
-    [ s | s <- toList (states m), isTruePSpace (m, s) f ]
+truthSet :: AbilityMap -> Form -> [State]
+truthSet m f =
+    [ s | s <- toList (states m), isTrue (m, s) f ]
 
-isTruePSpace :: (AbilityMap, State) -> Form -> Bool
-isTruePSpace _ T = True
-isTruePSpace (m, s) (P p) =
+isTrue :: (AbilityMap, State) -> Form -> Bool
+isTrue _ T = True
+isTrue (m, s) (P p) =
     p `elem` valuationAt (valuation m) s
-isTruePSpace (m, s) (Neg f) =
-    not (isTruePSpace (m, s) f)
-isTruePSpace (m, s) (Conj f g) =
-    isTruePSpace (m, s) f && isTruePSpace (m, s) g
-isTruePSpace (m, _) (KH f g) =
+isTrue (m, s) (Neg f) =
+    not (isTrue (m, s) f)
+isTrue (m, s) (Conj f g) =
+    isTrue (m, s) f && isTrue (m, s) g
+isTrue (m, _) (KH f g) =
     khComplete m phiStates psiStates
   where
-    phiStates = truthSetPSpace m f
-    psiStates = truthSetPSpace m g
+    phiStates = truthSet m f
+    psiStates = truthSet m g
 
 -- Infix alias for the complete satisfaction relation
-(|=*) :: (AbilityMap, State) -> Form -> Bool
-(|=*) = isTruePSpace
+(|=) :: (AbilityMap, State) -> Form -> Bool
+(|=) = isTrue
 
-findWitnessPSpace :: AbilityMap -> Form -> Form -> Maybe Plan
-findWitnessPSpace m f g =
+findWitness :: AbilityMap -> Form -> Form -> Maybe Plan
+findWitness m f g =
     findWitnessPSpaceBySets m phiStates psiStates
   where
-    phiStates = truthSetPSpace m f
-    psiStates = truthSetPSpace m g
+    phiStates = truthSet m f
+    psiStates = truthSet m g
 \end{code}
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
@@ -380,7 +357,7 @@ parseForm = parse (pForm <* eof) "input"
 evalForm :: (AbilityMap, State) -> String -> Bool
 evalForm (m, s) str =
     case parseForm str of
-        Right f -> isTrue (m, s) f
+        Right f -> isTrueBounded (m, s) f
         Left _  -> error "Invalid formula"
 
 \end{code}

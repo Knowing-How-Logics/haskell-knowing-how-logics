@@ -255,8 +255,8 @@ To perform the reachability checks in $\mathsf{PTIME}$, we use the following \te
 \EndFunction
 \end{algorithmic}
 }
-The algorithm above runs in $O(|V|+|E|)$, which is polynomial.
-In Haskell:\\
+The algorithm above runs in $O(|V|+|E|)$, which is polynomial.\\
+\hide{
 \begin{code}
 -- Successors of a vertex in the digraph
 successors :: Digraph -> GVertex -> [GVertex]
@@ -266,7 +266,7 @@ reachableTarget :: Digraph -> GVertex -> [GVertex] -> Bool
 reachableTarget g start targetSet =
     existsReachable (`elem` targetSet) (successors g) start
 \end{code}
-
+}
 The algorithm that checks Condition (1) from \cite{Demri2023} works as follows:
 {\small
 \begin{algorithmic}[1]
@@ -432,7 +432,7 @@ truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 -- Satisfaction relation for the propositional fragment
 isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
 \end{code}
-\hide{
+
 \begin{code}
 isTrueReg (m, s) (Prop p) =
     p `elem` valuationAt (valuationM m) s
