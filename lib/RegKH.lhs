@@ -440,9 +440,7 @@ isTrueReg (m, s) (Not f) =
     not (isTrueReg (m, s) f)
 isTrueReg (m, s) (Disj f g) =
     isTrueReg (m, s) f || isTrueReg (m, s) g
-\end{code}
-}
-\begin{code}
+
 -- Kh_a(phi, psi) holds iff there exists A in U_a such that
 -- (1) [[phi]] is subset of SE(L(A))      
 -- (2) R_{L(A)}([[phi]]) is subset of [[psi]]  
@@ -457,6 +455,22 @@ isTrueReg (m, _) (KHI agent phi psi) =
 -- Infix alias for the satisfaction relation
 (||=) :: (RegLTSU, State) -> RegForm -> Bool
 (||=) = isTrueReg
+
+findWitnessAutomaton :: RegLTSU -> Agent -> RegForm -> RegForm -> Maybe Automaton
+findWitnessAutomaton m agent phi psi =
+    firstGood (getAgentAuts m agent)
+  where
+    phiStates    = truthSet m phi
+    negPsiStates = truthSet m (Not psi)
+
+    isGoodAutomaton aut =
+        checkCond1 m aut phiStates
+        && checkCond2 m aut phiStates negPsiStates
+
+    firstGood [] = Nothing
+    firstGood (aut:auts)
+        | isGoodAutomaton aut = Just aut
+        | otherwise           = firstGood auts
 \end{code}
 
 \subsection{Parsing for $reg\text{-}\mathcal{L}^U_{Kh}$}
