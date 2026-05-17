@@ -223,18 +223,21 @@ stepKHProductState rs a st =
                 map (stepBadComponent rs a) (badComponentsKH st)
             }
 
-khComplete :: AbilityMap -> [State] -> [State] -> Bool
-khComplete m phiStates psiStates =
-    existsReachable acceptingKHProductState next initialState
+khCompletePSpace :: AbilityMap -> [State] -> [State] -> Bool
+khCompletePSpace m phiStates psiStates =
+    dfs maxDepth initialState
   where
     rs :: Relations
-    rs = transitions m
+    rs =
+        transitions m
 
     acts :: [Action]
-    acts = actionsOf rs
+    acts =
+        actionsOf rs
 
     allStates :: [State]
-    allStates = toList (states m)
+    allStates =
+        toList (states m)
 
     negPsiStates :: [State]
     negPsiStates =
@@ -244,11 +247,22 @@ khComplete m phiStates psiStates =
     initialState =
         initialKHProductState phiStates negPsiStates
 
-    next :: KHProductState -> [KHProductState]
-    next current =
-        [ stepKHProductState rs a current
-        | a <- acts
-        ]
+    n :: Int
+    n =
+        length allStates
+
+    maxDepth :: Int
+    maxDepth =
+        (2 ^ (3 * n)) * (n ^ (3 :: Int))
+
+    dfs :: Int -> KHProductState -> Bool
+    dfs depth current
+        | acceptingKHProductState current = True
+        | depth <= 0                      = False
+        | otherwise =
+            any
+                (\a -> dfs (depth - 1) (stepKHProductState rs a current))
+                acts
 
 findWitnessPSpaceBySets :: AbilityMap -> [State] -> [State] -> Maybe Plan
 findWitnessPSpaceBySets m phiStates psiStates =
@@ -290,10 +304,13 @@ isTrue (m, s) (Neg f) =
 isTrue (m, s) (Conj f g) =
     isTrue (m, s) f && isTrue (m, s) g
 isTrue (m, _) (KH f g) =
-    khComplete m phiStates psiStates
+    khCompletePSpace m phiStates psiStates
   where
-    phiStates = truthSet m f
-    psiStates = truthSet m g
+    phiStates =
+        [ s | s <- toList (states m), isTrue (m, s) f ]
+
+    psiStates =
+        [ s | s <- toList (states m), isTrue (m, s) g ]
 
 -- Infix alias for the complete satisfaction relation
 (|=) :: (AbilityMap, State) -> Form -> Bool

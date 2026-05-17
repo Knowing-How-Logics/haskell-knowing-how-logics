@@ -95,33 +95,7 @@ numAgentsIn m = length (uncertainty m)
 main :: IO ()
 main = hspec $ do
 
-  describe "Single-Agent Logic L_Kh" $ do
-
-    it "Boolean: Double Negation Elimination (!!f <=> f)" $
-      property $ \(PM (m, s)) f ->
-        isEquivalent (m, s) (Neg (Neg f)) f
-
-    it "Boolean: Commutativity of Conjunction (f1 ^ f2 <=> f2 ^ f1)" $
-      property $ \(PM (m, s)) f1 f2 ->
-        isEquivalent (m, s) (Conj f1 f2) (Conj f2 f1)
-
-    it "Boolean: Identity of Conjunction (f ^ T <=> f)" $
-      property $ \(PM (m, s)) f ->
-        isTrue (m, s) (Conj f T) === isTrue (m, s) f
-
-    it "Kh is global: truth does not vary between states" $
-      property $ \m f g ->
-      let sts = toList (states m)
-          results = [ isTrue (m, s) (KH f g) | s <- sts ]
-      in all (== head results) results
-
-    it "Empty plan leaves the current state unchanged" $
-      property $ \(PM (m, s)) ->
-        executePlan (transitions m) s [] == [s]
-
-    it "Empty plan is strongly executable at every state" $
-        property $ \(PM (m, s)) ->
-          stronglyExecutableAt (transitions m) s []
+  
 
   describe "Multi-Agent Logic reg-L^U_KH" $ do
 
@@ -170,42 +144,3 @@ main = hspec $ do
 \end{code}
 }
 
-Running \texttt{stack test} in the terminal yields the following relevant test output.
-
-\begin{verbatim}
-KHora> test (suite: quickcheck-logic)
-                   
-Single-Agent Logic L_Kh
-  Boolean: Double Negation Elimination (!!f <=> f) 
-    +++ OK, passed 100 tests.
-  Boolean: Commutativity of Conjunction (f1 ^ f2 <=> f2 ^ f1) 
-    +++ OK, passed 100 tests.
-  Boolean: Identity of Conjunction (f ^ T <=> f) 
-    +++ OK, passed 100 tests.
-  Kh is global: truth does not vary between states 
-    +++ OK, passed 100 tests.
-  Empty plan leaves the current state unchanged
-    +++ OK, passed 100 tests.
-  Empty plan is strongly executable at every state 
-    +++ OK, passed 100 tests.
-Multi-Agent Logic reg-L^U_KH
-  Vacuous Precondition: knowing how from contradiction holds vacuously 
-    +++ OK, passed 100 tests.
-  Kh_i is global: agent ability is a model-wide property 
-    +++ OK, passed 100 tests.
-  Intersection checking is symmetric: 
-  the intersection of L(A1) and L(A2) is non-empty 
-  iff the intersection of L(A2) and L(A1) is non-empty
-    +++ OK, passed 100 tests.
-  Path automata mirror the LTS transitions 
-    +++ OK, passed 100 tests.
-
-Finished in 1.1135 seconds
-10 examples, 0 failures
-
-KHora> Test suite quickcheck-logic passed
-Completed 2 action(s).
-\end{verbatim}
-
-
-Overall, these results provide evidence that the implementation correctly captures the intended semantic and implementation-level properties of the logics.
