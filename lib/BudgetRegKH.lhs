@@ -1,0 +1,211 @@
+\begin{code}
+module BudgetRegKH where
+
+import Data.List (nub)
+import Data.Maybe (fromMaybe)
+
+import LTS
+import Automata
+import RegKH
+import GraphSearch
+\end{code}
+
+\begin{code}
+type Cost = Int
+type Budget = Int
+type WeightFunction = [((State, Action), Cost)]
+type BudgetProductVertex = (State, AState)
+
+type Weight = [Int]
+type VectorBudget = [Int]
+type VectorWeightFunction = [((State, Action), Weight)]
+\end{code}
+
+\begin{code}
+data BudgetRegLTSU = BudgetRegLTSU
+    { statesBR      :: [State]
+    , relationsBR   :: Relations
+    , uncertaintyBR :: Uncertainty
+    , weightsBR     :: WeightFunction
+    , valuationBR   :: Valuation
+    } deriving (Eq, Show, Ord)
+
+getWeight :: BudgetRegLTSU -> State -> Action -> Cost
+getWeight m s a =
+    fromMaybe 0 (lookup (s, a) (weightsBR m))
+
+forgetBudget :: BudgetRegLTSU -> RegLTSU
+forgetBudget m =
+    RegLTSU
+        { statesM =
+            statesBR m
+        , relationsM =
+            relationsBR m
+        , uncertainty =
+            uncertaintyBR m
+        , valuationM =
+            valuationBR m
+        }
+\end{code}
+
+\begin{code}
+data VectorBudgetRegLTSU = VectorBudgetRegLTSU
+    { statesVBR      :: [State]
+    , relationsVBR   :: Relations
+    , uncertaintyVBR :: Uncertainty
+    , weightsVBR     :: VectorWeightFunction
+    , valuationVBR   :: Valuation
+    } deriving (Eq, Show, Ord)
+
+getVectorWeight :: VectorBudgetRegLTSU -> State -> Action -> Weight
+getVectorWeight m s a =
+    fromMaybe [] (lookup (s, a) (weightsVBR m))
+
+forgetVectorBudget :: VectorBudgetRegLTSU -> RegLTSU
+forgetVectorBudget m =
+    RegLTSU
+        { statesM =
+            statesVBR m
+        , relationsM =
+            relationsVBR m
+        , uncertainty =
+            uncertaintyVBR m
+        , valuationM =
+            valuationVBR m
+        }
+\end{code}
+
+\begin{code}
+data BudgetRegForm
+    = BProp Proposition
+    | BNot BudgetRegForm
+    | BDisj BudgetRegForm BudgetRegForm
+    | BKHI Budget Agent BudgetRegForm BudgetRegForm
+    deriving (Eq, Show, Ord)
+
+data VectorBudgetRegForm
+    = VBProp Proposition
+    | VBNot VectorBudgetRegForm
+    | VBDisj VectorBudgetRegForm VectorBudgetRegForm
+    | VBKHI VectorBudget Agent VectorBudgetRegForm VectorBudgetRegForm
+    deriving (Eq, Show, Ord)
+\end{code}
+
+\begin{code}
+isProductiveState :: Automaton -> AState -> Bool
+isProductiveState aut q =
+    existsReachable (`elem` autFinal aut) next q
+  where
+    next :: AState -> [AState]
+    next current =
+        nub [ q'
+            | a <- autAlphabet aut
+            , q' <- successorsA aut current a
+            ]
+
+allStatesProductive :: Automaton -> Bool
+allStatesProductive aut =
+    all (isProductiveState aut) (autStates aut)
+\end{code}
+
+\begin{code}
+lookupDistance :: BudgetProductVertex -> [(BudgetProductVertex, Cost)] -> Maybe Cost
+lookupDistance =
+    lookup
+
+updateDistance
+    :: BudgetProductVertex
+    -> Cost
+    -> [(BudgetProductVertex, Cost)]
+    -> [(BudgetProductVertex, Cost)]
+updateDistance v d [] =
+    [(v, d)]
+updateDistance v d ((u, oldD) : rest)
+    | v == u =
+        (u, min d oldD) : rest
+    | otherwise =
+        (u, oldD) : updateDistance v d rest
+\end{code}
+
+\begin{code}
+budgetProductVertices :: BudgetRegLTSU -> Automaton -> [BudgetProductVertex]
+budgetProductVertices m aut =
+    [ (s, q)
+    | s <- statesBR m
+    , q <- autStates aut
+    ]
+
+budgetSuccessors
+    :: BudgetRegLTSU
+    -> Automaton
+    -> BudgetProductVertex
+    -> [(BudgetProductVertex, Cost)]
+budgetSuccessors m aut (s, q) =
+    [ ((s', q'), getWeight m s a)
+    | a  <- autAlphabet aut
+    , q' <- successorsA aut q a
+    , s' <- image (rA (relationsBR m) a) s
+    ]
+\end{code}
+
+\begin{code}
+unsafeBudgetFrom
+    :: BudgetRegLTSU
+    -> Automaton
+    -> Budget
+    -> BudgetProductVertex
+    -> Bool
+unsafeBudgetFrom m aut budget start =
+    any belowBudget finalDistances || hasRelevantNegativeCycle finalDistances
+  where
+    vertices :: [BudgetProductVertex]
+    vertices =
+        budgetProductVertices m aut
+
+    edgeList :: [(BudgetProductVertex, BudgetProductVertex, Cost)]
+    edgeList =
+        [ (v, v', c)
+        | v <- vertices
+        , (v', c) <- budgetSuccessors m aut v
+        ]
+
+    initialDistances :: [(BudgetProductVertex, Cost)]
+    initialDistances =
+        [(start, 0)]
+
+    relaxOnce :: [(BudgetProductVertex, Cost)] -> [(BudgetProductVertex, Cost)]
+    relaxOnce distances =
+        foldl relaxEdge distances edgeList
+
+    relaxEdge
+        :: [(BudgetProductVertex, Cost)]
+        -> (BudgetProductVertex, BudgetProductVertex, Cost)
+        -> [(BudgetProductVertex, Cost)]
+    relaxEdge distances (u, v, c) =
+        case lookupDistance u distances of
+            Nothing ->
+                distances
+            Just du ->
+                updateDistance v (du + c) distances
+
+    finalDistances :: [(BudgetProductVertex, Cost)]
+    finalDistances =
+        iterate relaxOnce initialDistances !! length vertices
+
+    belowBudget :: (BudgetProductVertex, Cost) -> Bool
+    belowBudget (_, d) =
+        budget + d < 0
+
+    hasRelevantNegativeCycle :: [(BudgetProductVertex, Cost)] -> Bool
+    hasRelevantNegativeCycle distances =
+        any canStillImprove edgeList
+      where
+        canStillImprove (u, v, c) =
+            case (lookupDistance u distances, lookupDistance v distances) of
+                (Just du, Just dv) ->
+                    du + c < dv
+                (Just _, Nothing) ->
+                    True
+                _ ->
+                    False
+\end{code}
