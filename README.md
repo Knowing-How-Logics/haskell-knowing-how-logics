@@ -3,6 +3,7 @@
 KHora is a model checking tool for knowing-how logics, written in Haskell. It currently supports:
 
 - the basic knowing-how logic $\mathcal{L}_{Kh}$;
+- the knowing-how logic with intermediate constraints $\mathcal{L}_{Khm}$;
 - the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$.
 
 In addition to the core model checkers, KHora provides parsers for both logics, random generators for models and formulas, a test suite based on `QuickCheck` and `HSpec`, and a lightweight web interface.
@@ -120,3 +121,4 @@ make
 - Wang, Y. (2015). *A Logic of Knowing How*. In *Logic, Rationality, and Interaction: 5th International Workshop, LORI 2015*, LNCS 9394, pp. 392–405. Springer.
 - Areces, C., Fervari, R., Saravia, A. R., & Velázquez-Quesada, F. R. (2021). *Uncertainty-Based Semantics for Multi-Agent Knowing How Logics*. In *Proceedings of the 18th Conference on Theoretical Aspects of Rationality and Knowledge (TARK 2021)*, EPTCS 335, pp. 23–37.
 - Demri, S., & Fervari, R. (2023). *Model-Checking for Ability-Based Logics with Constrained Plans*. In *Proceedings of the 37th AAAI Conference on Artificial Intelligence*, Vol. 37, No. 5, pp. 6305–6312.
+- Wang, Y. 2018b. A logic of goal-directed knowing how. Synthese, 195(10): 4419–4439.
