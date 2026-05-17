@@ -5,9 +5,9 @@ KHora is a model checking tool for knowing-how logics, written in Haskell. It cu
 - the basic knowing-how logic $\mathcal{L}_{Kh}$;
 - the knowing-how logic with intermediate constraints $\mathcal{L}_{Khm}$;
 - the uncertainty-based knowing-how logic with regularity constraints $reg\text{-}\mathcal{L}^U_{Kh}$;
-- $reg\text{-}\mathcal{L}^U_{Kh}$ with budgets.
+- the budget extension of $\mathit{reg}\text{-}\mathcal{L}^U_{Kh}$.
 
-In addition to the core model checkers, KHora provides parsers for $\mathcal{L}_{Kh}$ and $reg\text{-}\mathcal{L}^U_{Kh}$, random generators for models and formulas, a test suite based on `QuickCheck` and `HSpec`, and a lightweight web interface.
+In addition to the core model checkers, KHora provides parsers for $\mathcal{L}_{Kh}$ and reg-$\mathcal{L}^{U}_{Kh}$, random generators for models and formulas, a test suite based on `QuickCheck` and `HSpec`, and a lightweight web interface.
 
 For further details, see the relevant sections of `KHora.pdf`.
 
