@@ -209,3 +209,123 @@ unsafeBudgetFrom m aut budget start =
                 _ ->
                     False
 \end{code}
+
+\begin{code}
+checkCond3Budget1D
+    :: BudgetRegLTSU
+    -> Automaton
+    -> Budget
+    -> [State]
+    -> Bool
+checkCond3Budget1D m aut budget phiStates =
+    allStatesProductive aut
+    && not (any unsafe starts)
+  where
+    starts :: [BudgetProductVertex]
+    starts =
+        [ (s, q0)
+        | s  <- phiStates
+        , q0 <- autInitial aut
+        ]
+
+    unsafe :: BudgetProductVertex -> Bool
+    unsafe =
+        unsafeBudgetFrom m aut budget
+\end{code}
+
+\begin{code}
+weightAtDimension :: Int -> Weight -> Int
+weightAtDimension k w =
+    if k < length w
+       then w !! k
+       else 0
+
+getWeightAtDimension :: VectorBudgetRegLTSU -> Int -> State -> Action -> Cost
+getWeightAtDimension m k s a =
+    weightAtDimension k (getVectorWeight m s a)
+\end{code}
+
+\begin{code}
+vectorBudgetProductVertices :: VectorBudgetRegLTSU -> Automaton -> [BudgetProductVertex]
+vectorBudgetProductVertices m aut =
+    [ (s, q)
+    | s <- statesVBR m
+    , q <- autStates aut
+    ]
+
+budgetSuccessorsAtDimension
+    :: VectorBudgetRegLTSU
+    -> Automaton
+    -> Int
+    -> BudgetProductVertex
+    -> [(BudgetProductVertex, Cost)]
+budgetSuccessorsAtDimension m aut k (s, q) =
+    [ ((s', q'), getWeightAtDimension m k s a)
+    | a  <- autAlphabet aut
+    , q' <- successorsA aut q a
+    , s' <- image (rA (relationsVBR m) a) s
+    ]
+\end{code}
+
+\begin{code}
+unsafeBudgetFromAtDimension
+    :: VectorBudgetRegLTSU
+    -> Automaton
+    -> Int
+    -> Budget
+    -> BudgetProductVertex
+    -> Bool
+unsafeBudgetFromAtDimension m aut k budget start =
+    any belowBudget finalDistances || hasRelevantNegativeCycle finalDistances
+  where
+    vertices :: [BudgetProductVertex]
+    vertices =
+        vectorBudgetProductVertices m aut
+
+    edgeList :: [(BudgetProductVertex, BudgetProductVertex, Cost)]
+    edgeList =
+        [ (v, v', c)
+        | v <- vertices
+        , (v', c) <- budgetSuccessorsAtDimension m aut k v
+        ]
+
+    initialDistances :: [(BudgetProductVertex, Cost)]
+    initialDistances =
+        [(start, 0)]
+
+    relaxOnce :: [(BudgetProductVertex, Cost)] -> [(BudgetProductVertex, Cost)]
+    relaxOnce distances =
+        foldl relaxEdge distances edgeList
+
+    relaxEdge
+        :: [(BudgetProductVertex, Cost)]
+        -> (BudgetProductVertex, BudgetProductVertex, Cost)
+        -> [(BudgetProductVertex, Cost)]
+    relaxEdge distances (u, v, c) =
+        case lookupDistance u distances of
+            Nothing ->
+                distances
+            Just du ->
+                updateDistance v (du + c) distances
+
+    finalDistances :: [(BudgetProductVertex, Cost)]
+    finalDistances =
+        iterate relaxOnce initialDistances !! length vertices
+
+    belowBudget :: (BudgetProductVertex, Cost) -> Bool
+    belowBudget (_, d) =
+        budget + d < 0
+
+    hasRelevantNegativeCycle :: [(BudgetProductVertex, Cost)] -> Bool
+    hasRelevantNegativeCycle distances =
+        any canStillImprove edgeList
+      where
+        canStillImprove (u, v, c) =
+            case (lookupDistance u distances, lookupDistance v distances) of
+                (Just du, Just dv) ->
+                    du + c < dv
+                (Just _, Nothing) ->
+                    True
+                _ ->
+                    False
+\end{code}
