@@ -105,8 +105,7 @@ allSatisfyI allowedStates = all (`elem` allowedStates)
 \end{code}
 
 \begin{code}
-stepIComponent
-    :: Relations
+stepIComponent:: Relations
     -> [State]
     -> Action
     -> Bool
@@ -224,8 +223,7 @@ khmCompleteBySets m psiStates chiStates phiStates =
 \end{code}
 
 \begin{code}
-findWitnessKhmBySets
-    :: AbilityMap
+findWitnessKhmBySets:: AbilityMap
     -> [State]
     -> [State]
     -> [State]

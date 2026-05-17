@@ -113,11 +113,7 @@ lookupDistance :: BudgetProductVertex -> [(BudgetProductVertex, Cost)] -> Maybe 
 lookupDistance =
     lookup
 
-updateDistance
-    :: BudgetProductVertex
-    -> Cost
-    -> [(BudgetProductVertex, Cost)]
-    -> [(BudgetProductVertex, Cost)]
+updateDistance :: BudgetProductVertex -> Cost -> [(BudgetProductVertex, Cost)] -> [(BudgetProductVertex, Cost)]
 updateDistance v d [] =
     [(v, d)]
 updateDistance v d ((u, oldD) : rest)
@@ -135,11 +131,7 @@ budgetProductVertices m aut =
     , q <- autStates aut
     ]
 
-budgetSuccessors
-    :: BudgetRegLTSU
-    -> Automaton
-    -> BudgetProductVertex
-    -> [(BudgetProductVertex, Cost)]
+budgetSuccessors :: BudgetRegLTSU -> Automaton -> BudgetProductVertex -> [(BudgetProductVertex, Cost)]
 budgetSuccessors m aut (s, q) =
     [ ((s', q'), getWeight m s a)
     | a  <- autAlphabet aut
@@ -149,12 +141,7 @@ budgetSuccessors m aut (s, q) =
 \end{code}
 
 \begin{code}
-unsafeBudgetFrom
-    :: BudgetRegLTSU
-    -> Automaton
-    -> Budget
-    -> BudgetProductVertex
-    -> Bool
+unsafeBudgetFrom :: BudgetRegLTSU -> Automaton -> Budget -> BudgetProductVertex -> Bool
 unsafeBudgetFrom m aut budget start =
     any belowBudget finalDistances || hasRelevantNegativeCycle finalDistances
   where
@@ -177,10 +164,7 @@ unsafeBudgetFrom m aut budget start =
     relaxOnce distances =
         foldl relaxEdge distances edgeList
 
-    relaxEdge
-        :: [(BudgetProductVertex, Cost)]
-        -> (BudgetProductVertex, BudgetProductVertex, Cost)
-        -> [(BudgetProductVertex, Cost)]
+    relaxEdge :: [(BudgetProductVertex, Cost)] -> (BudgetProductVertex, BudgetProductVertex, Cost) -> [(BudgetProductVertex, Cost)]
     relaxEdge distances (u, v, c) =
         case lookupDistance u distances of
             Nothing ->
@@ -211,12 +195,7 @@ unsafeBudgetFrom m aut budget start =
 \end{code}
 
 \begin{code}
-checkCond3Budget1D
-    :: BudgetRegLTSU
-    -> Automaton
-    -> Budget
-    -> [State]
-    -> Bool
+checkCond3Budget1D :: BudgetRegLTSU -> Automaton -> Budget -> [State] -> Bool
 checkCond3Budget1D m aut budget phiStates =
     allStatesProductive aut
     && not (any unsafe starts)
@@ -253,12 +232,7 @@ vectorBudgetProductVertices m aut =
     , q <- autStates aut
     ]
 
-budgetSuccessorsAtDimension
-    :: VectorBudgetRegLTSU
-    -> Automaton
-    -> Int
-    -> BudgetProductVertex
-    -> [(BudgetProductVertex, Cost)]
+budgetSuccessorsAtDimension :: VectorBudgetRegLTSU -> Automaton -> Int -> BudgetProductVertex -> [(BudgetProductVertex, Cost)]
 budgetSuccessorsAtDimension m aut k (s, q) =
     [ ((s', q'), getWeightAtDimension m k s a)
     | a  <- autAlphabet aut
@@ -268,13 +242,7 @@ budgetSuccessorsAtDimension m aut k (s, q) =
 \end{code}
 
 \begin{code}
-unsafeBudgetFromAtDimension
-    :: VectorBudgetRegLTSU
-    -> Automaton
-    -> Int
-    -> Budget
-    -> BudgetProductVertex
-    -> Bool
+unsafeBudgetFromAtDimension :: VectorBudgetRegLTSU -> Automaton -> Int -> Budget -> BudgetProductVertex -> Bool
 unsafeBudgetFromAtDimension m aut k budget start =
     any belowBudget finalDistances || hasRelevantNegativeCycle finalDistances
   where
@@ -297,10 +265,7 @@ unsafeBudgetFromAtDimension m aut k budget start =
     relaxOnce distances =
         foldl relaxEdge distances edgeList
 
-    relaxEdge
-        :: [(BudgetProductVertex, Cost)]
-        -> (BudgetProductVertex, BudgetProductVertex, Cost)
-        -> [(BudgetProductVertex, Cost)]
+    relaxEdge :: [(BudgetProductVertex, Cost)] -> (BudgetProductVertex, BudgetProductVertex, Cost) -> [(BudgetProductVertex, Cost)]
     relaxEdge distances (u, v, c) =
         case lookupDistance u distances of
             Nothing ->
@@ -328,4 +293,142 @@ unsafeBudgetFromAtDimension m aut k budget start =
                     True
                 _ ->
                     False
+\end{code}
+
+
+\begin{code}
+checkCond3VectorBudget :: VectorBudgetRegLTSU -> Automaton -> VectorBudget -> [State] -> Bool
+checkCond3VectorBudget m aut budget phiStates =
+    allStatesProductive aut
+    && all dimensionSafe dimensions
+  where
+    dimensions :: [Int]
+    dimensions =
+        take (length budget) [0..]
+
+    starts :: [BudgetProductVertex]
+    starts =
+        [ (s, q0)
+        | s  <- phiStates
+        , q0 <- autInitial aut
+        ]
+
+    dimensionSafe :: Int -> Bool
+    dimensionSafe k =
+        not (any (unsafeBudgetFromAtDimension m aut k (budget !! k)) starts)
+\end{code}
+
+\begin{code}
+truthSetBR :: BudgetRegLTSU -> BudgetRegForm -> [State]
+truthSetBR m f =
+    [ s | s <- statesBR m, isTrueBR (m, s) f ]
+
+getAgentAutsBR :: BudgetRegLTSU -> Agent -> [Automaton]
+getAgentAutsBR m agent =
+    fromMaybe [] (lookup agent (uncertaintyBR m))
+
+findWitnessAutomatonBR
+    :: BudgetRegLTSU
+    -> Budget
+    -> Agent
+    -> BudgetRegForm
+    -> BudgetRegForm
+    -> Maybe Automaton
+findWitnessAutomatonBR m budget agent phi psi =
+    findFirst goodAutomaton (getAgentAutsBR m agent)
+  where
+    plainModel :: RegLTSU
+    plainModel =
+        forgetBudget m
+
+    phiStates :: [State]
+    phiStates =
+        truthSetBR m phi
+
+    negPsiStates :: [State]
+    negPsiStates =
+        truthSetBR m (BNot psi)
+
+    goodAutomaton :: Automaton -> Bool
+    goodAutomaton aut =
+        checkCond1 plainModel aut phiStates
+        && checkCond2 plainModel aut phiStates negPsiStates
+        && checkCond3Budget1D m aut budget phiStates
+
+isTrueBR :: (BudgetRegLTSU, State) -> BudgetRegForm -> Bool
+isTrueBR (m, s) (BProp p) =
+    p `elem` valuationAt (valuationBR m) s
+isTrueBR (m, s) (BNot f) =
+    not (isTrueBR (m, s) f)
+isTrueBR (m, s) (BDisj f g) =
+    isTrueBR (m, s) f || isTrueBR (m, s) g
+isTrueBR (m, _) (BKHI budget agent phi psi) =
+    case findWitnessAutomatonBR m budget agent phi psi of
+        Just _ ->
+            True
+        Nothing ->
+            False
+
+(||=$) :: (BudgetRegLTSU, State) -> BudgetRegForm -> Bool
+(||=$) = isTrueBR
+\end{code}
+
+\begin{code}
+truthSetVBR :: VectorBudgetRegLTSU -> VectorBudgetRegForm -> [State]
+truthSetVBR m f =
+    [ s | s <- statesVBR m, isTrueVBR (m, s) f ]
+
+getAgentAutsVBR :: VectorBudgetRegLTSU -> Agent -> [Automaton]
+getAgentAutsVBR m agent =
+    fromMaybe [] (lookup agent (uncertaintyVBR m))
+
+findWitnessAutomatonVBR :: VectorBudgetRegLTSU  -> VectorBudget -> Agent -> VectorBudgetRegForm -> VectorBudgetRegForm -> Maybe Automaton
+findWitnessAutomatonVBR m budget agent phi psi =
+    findFirst goodAutomaton (getAgentAutsVBR m agent)
+  where
+    plainModel :: RegLTSU
+    plainModel =
+        forgetVectorBudget m
+
+    phiStates :: [State]
+    phiStates =
+        truthSetVBR m phi
+
+    negPsiStates :: [State]
+    negPsiStates =
+        truthSetVBR m (VBNot psi)
+
+    goodAutomaton :: Automaton -> Bool
+    goodAutomaton aut =
+        checkCond1 plainModel aut phiStates
+        && checkCond2 plainModel aut phiStates negPsiStates
+        && checkCond3VectorBudget m aut budget phiStates
+
+isTrueVBR :: (VectorBudgetRegLTSU, State) -> VectorBudgetRegForm -> Bool
+isTrueVBR (m, s) (VBProp p) =
+    p `elem` valuationAt (valuationVBR m) s
+isTrueVBR (m, s) (VBNot f) =
+    not (isTrueVBR (m, s) f)
+isTrueVBR (m, s) (VBDisj f g) =
+    isTrueVBR (m, s) f || isTrueVBR (m, s) g
+isTrueVBR (m, _) (VBKHI budget agent phi psi) =
+    case findWitnessAutomatonVBR m budget agent phi psi of
+        Just _ ->
+            True
+        Nothing ->
+            False
+
+(||=*$) :: (VectorBudgetRegLTSU, State) -> VectorBudgetRegForm -> Bool
+(||=*$) = isTrueVBR
+\end{code}
+
+\begin{code}
+findFirst :: (a -> Bool) -> [a] -> Maybe a
+findFirst _ [] =
+    Nothing
+findFirst predicate (x : xs)
+    | predicate x =
+        Just x
+    | otherwise =
+        findFirst predicate xs
 \end{code}
