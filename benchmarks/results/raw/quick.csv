@@ -1,0 +1,9 @@
+name,logic,family,mode,states,actions,transitions,propositions,agents,automata,automaton_states,budget_dimension,formula_size,result,time_ms
+budget-1d-line-4,budget,one-dimensional,quick,4,1,3,2,1,1,4,1,3,True,0.000
+budget-1d-line-6,budget,one-dimensional,quick,6,1,5,2,1,1,6,1,3,True,0.000
+budget-1d-line-8,budget,one-dimensional,quick,8,1,7,2,1,1,8,1,3,True,0.000
+budget-1d-line-10,budget,one-dimensional,quick,10,1,9,2,1,1,10,1,3,True,15.625
+budget-vector-line-4,budget,vector,quick,4,1,3,2,1,1,4,2,3,True,0.000
+budget-vector-line-6,budget,vector,quick,6,1,5,2,1,1,6,2,3,True,0.000
+budget-vector-line-8,budget,vector,quick,8,1,7,2,1,1,8,2,3,True,0.000
+budget-vector-line-10,budget,vector,quick,10,1,9,2,1,1,10,2,3,True,0.000
