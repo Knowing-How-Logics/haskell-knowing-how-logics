@@ -43,7 +43,7 @@ executables:
   khora-check-basic:
     main: CheckBasic.hs
     source-dirs:
-      - benchmarks/check
+      - benchmarks/Check
     dependencies:
       - base
 tests:
