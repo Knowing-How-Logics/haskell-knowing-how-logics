@@ -31,7 +31,7 @@ executables:
     source-dirs: exec
     dependencies:
       - KHora
-  
+
   khora-bench:
     main: Main.hs
     source-dirs:
@@ -39,13 +39,24 @@ executables:
       - benchmarks/src
     dependencies:
       - KHora
+      - filepath
 
   khora-check-basic:
     main: CheckBasic.hs
     source-dirs:
       - benchmarks/Check
+    other-modules: []
     dependencies:
       - base
+
+  khora-check-regular:
+    main: CheckRegular.hs
+    source-dirs:
+      - benchmarks/Check
+    other-modules: []
+    dependencies:
+      - base
+
 tests:
   quickcheck-logic:     
     main:                quickcheck.lhs
