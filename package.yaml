@@ -57,6 +57,14 @@ executables:
     dependencies:
       - base
 
+  khora-check-intermediate:
+    main: CheckIntermediate.hs
+    source-dirs:
+      - benchmarks/Check
+    other-modules: []
+    dependencies:
+      - base
+
 tests:
   quickcheck-logic:     
     main:                quickcheck.lhs
