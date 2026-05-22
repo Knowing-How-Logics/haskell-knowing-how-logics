@@ -65,6 +65,14 @@ executables:
     dependencies:
       - base
 
+  khora-check-budget:
+    main: CheckBudget.hs
+    source-dirs:
+      - benchmarks/Check
+    other-modules: []
+    dependencies:
+      - base
+      
 tests:
   quickcheck-logic:     
     main:                quickcheck.lhs
