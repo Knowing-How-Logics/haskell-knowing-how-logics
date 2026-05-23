@@ -18,19 +18,11 @@ dependencies:
   - parsec
   - random
   - template-haskell
-  - scotty
-  - text
-  - wai-middleware-static
 
 library:
   source-dirs: lib
 
 executables:
-  myprogram:
-    main: Main.lhs
-    source-dirs: exec
-    dependencies:
-      - KHora
 
   khora-bench:
     main: Main.hs
@@ -40,6 +32,8 @@ executables:
     dependencies:
       - KHora
       - filepath
+    ghc-options:
+      - -O2
 
   khora-check-basic:
     main: CheckBasic.hs

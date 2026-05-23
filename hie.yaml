@@ -3,8 +3,26 @@ cradle:
     - path: "./lib"
       component: "KHora:lib"
 
-    - path: "./exec/Main.lhs"
-      component: "KHora:exe:myprogram"
-
     - path: "./test"
       component: "KHora:test:quickcheck-logic"
+
+    - path: "./benchmarks/app"
+      component: "KHora:exe:khora-bench"
+
+    - path: "./benchmarks/src"
+      component: "KHora:exe:khora-bench"
+
+    - path: "./benchmarks/Check/CheckBasic.hs"
+      component: "KHora:exe:khora-check-basic"
+
+    - path: "./benchmarks/Check/CheckRegular.hs"
+      component: "KHora:exe:khora-check-regular"
+
+    - path: "./benchmarks/Check/CheckIntermediate.hs"
+      component: "KHora:exe:khora-check-intermediate"
+
+    - path: "./benchmarks/Check/CheckBudget.hs"
+      component: "KHora:exe:khora-check-budget"
+
+    - path: "./benchmarks/Check/CheckAll.hs"
+      component: "KHora:exe:khora-check-all"
