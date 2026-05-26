@@ -26,6 +26,18 @@ safeAction = 1
 riskyAction :: L.Action
 riskyAction = 2
 
+rescueEnterAction :: L.Action
+rescueEnterAction = 10
+
+rescueLocateAction :: L.Action
+rescueLocateAction = 11
+
+rescueEvacuateAction :: L.Action
+rescueEvacuateAction = 12
+
+rescueRiskyAction :: L.Action
+rescueRiskyAction = 13
+
 basicBenchmarks :: BenchMode -> [BenchCase]
 basicBenchmarks mode =
   concat
@@ -88,6 +100,16 @@ caseStudyBenchmarks mode =
       True "Robot corridor case study: the same safe plan works from multiple possible starting states."
       "case-study" "multi-start" (Just 2)
       robotMultiStartModel (B.P startProp) (B.P goalProp)
+      
+  , mkBasicCase mode "basic-rescue-safe-route-positive" "rescue-basic"
+      True "Autonomous rescue case study: the robot has a reliable plan to enter the building, locate the survivor, and complete the evacuation."
+      "case-study" "safe-rescue-route" (Just 3)
+      rescueBasicSafeModel (B.P startProp) (B.P goalProp)
+
+  , mkBasicCase mode "basic-rescue-risky-branch-negative" "rescue-basic"
+      False "Autonomous rescue case study: the survivor is reachable, but the only available risky move can also lead to a smoke or collapse trap."
+      "case-study" "risky-rescue-branch" Nothing
+      rescueBasicRiskyModel (B.P startProp) (B.P goalProp)
   ]
 
 generatedBenchmarks :: BenchMode -> [BenchCase]
@@ -535,6 +557,68 @@ robotMultiStartModel =
     , (1, [startProp])
     , (2, [])
     , (3, [goalProp])
+    ]
+
+rescueBasicSafeModel :: B.AbilityMap
+rescueBasicSafeModel =
+  mkModel
+    [0, 1, 2, 3, 4]
+    [ (rescueEnterAction,
+        [ (0, 1)
+        , (1, 1)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        ])
+    , (rescueLocateAction,
+        [ (0, 0)
+        , (1, 2)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        ])
+    , (rescueEvacuateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 3)
+        , (3, 3)
+        , (4, 4)
+        ])
+    , (rescueRiskyAction,
+        [ (0, 4)
+        , (1, 4)
+        , (2, 4)
+        , (3, 3)
+        , (4, 4)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [])
+    , (2, [])
+    , (3, [goalProp])
+    , (4, [])
+    ]
+
+rescueBasicRiskyModel :: B.AbilityMap
+rescueBasicRiskyModel =
+  mkModel
+    [0, 1, 2, 3, 4]
+    [ (rescueRiskyAction,
+        [ (0, 1)
+        , (0, 4)
+        , (1, 2)
+        , (1, 4)
+        , (2, 3)
+        , (2, 4)
+        , (3, 3)
+        , (4, 4)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [])
+    , (2, [])
+    , (3, [goalProp])
+    , (4, [])
     ]
 
 linePositiveModel :: Int -> B.AbilityMap

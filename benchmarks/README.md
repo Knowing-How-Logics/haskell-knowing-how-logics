@@ -190,7 +190,46 @@ stack run khora-bench -- --full --suite trap-reachable-negative
 stack run khora-bench -- --full --suite vector-tightness
 ```
 
+The autonomous rescue families can also be selected directly:
+
+```bash
+stack run khora-bench -- --full --suite rescue-basic
+```
+
+```bash
+stack run khora-bench -- --full --suite rescue-intermediate
+```
+
+```bash
+stack run khora-bench -- --full --suite rescue-regular
+```
+
+```bash
+stack run khora-bench -- --full --suite rescue-budget
+```
+
 This is useful when developing or debugging one group of benchmarks.
+
+---
+
+### Run the autonomous rescue example only
+
+If the `Makefile` contains the rescue target, the whole rescue running example can be executed with:
+
+```bash
+make bench-rescue
+```
+
+Equivalently, the four rescue families can be run separately:
+
+```bash
+stack run khora-bench -- --full --suite rescue-basic --out benchmarks/results/raw/rescue-basic.csv
+stack run khora-bench -- --full --suite rescue-intermediate --out benchmarks/results/raw/rescue-intermediate.csv
+stack run khora-bench -- --full --suite rescue-regular --out benchmarks/results/raw/rescue-regular.csv
+stack run khora-bench -- --full --suite rescue-budget --out benchmarks/results/raw/rescue-budget.csv
+```
+
+The rescue example is intentionally small. It is mainly intended to explain the semantic differences between the four logics, not to stress-test performance.
 
 ---
 
@@ -501,6 +540,221 @@ stack run khora-bench -- --full --suite formula-depth-positive --out benchmarks/
 
 ---
 
+## Autonomous rescue running example
+
+In addition to synthetic scalability benchmarks, the suite contains a compact autonomous rescue running example. The purpose of this example is to make the semantic differences between the four logics easy to explain with one shared story.
+
+The story is as follows. An autonomous rescue robot enters a damaged building after a disaster. Its task is to move from the entrance into the building, locate a survivor, and complete the evacuation. The building may contain safe corridors, smoke zones, collapsed areas, blocked doors, and limited resources such as time, energy, or oxygen.
+
+The same rescue story is instantiated in four benchmark families:
+
+```text
+basic        rescue-basic
+intermediate rescue-intermediate
+regular      rescue-regular
+budget       rescue-budget
+```
+
+Each version is deliberately small. The aim is not to create a large stress test, but to show what each logic adds.
+
+### Rescue story at a glance
+
+The common safe rescue plan is:
+
+```text
+enter ; locate ; evacuate
+```
+
+The intended state interpretation is:
+
+```text
+entrance          the robot is outside or at the entrance of the damaged building
+safe corridor     the robot has entered through a safe route
+survivor located  the robot has found the survivor
+rescued           the survivor has been evacuated or the rescue has been completed
+hazard trap       the robot reaches smoke, collapse, or a blocked-door failure state
+```
+
+The four logics use this story in different ways.
+
+| Logic | Family | Main question |
+|---|---|---|
+| Basic | `rescue-basic` | Does the robot have a guaranteed rescue plan? |
+| Intermediate | `rescue-intermediate` | Can the robot rescue while all strict intermediate states remain safe? |
+| Regular | `rescue-regular` | Can the agent identify a reliable regular plan class under plan uncertainty? |
+| Budget | `rescue-budget` | Can the robot rescue within time and energy or oxygen limits? |
+
+### Basic rescue instance
+
+The basic family is:
+
+```text
+rescue-basic
+```
+
+It contains two benchmark cases:
+
+```text
+basic-rescue-safe-route-positive
+basic-rescue-risky-branch-negative
+```
+
+The positive case contains the reliable plan:
+
+```text
+enter ; locate ; evacuate
+```
+
+This plan guarantees that the robot reaches the rescued state from the entrance. Therefore `Kh(start, rescued)` is true.
+
+The negative case shows that ordinary reachability is not enough. The robot only has a risky action. The risky action can make progress toward the rescued state, but it can also lead to a smoke or collapse trap. Therefore the rescued state is reachable in the graph, but there is no guaranteed plan.
+
+The expected separator pattern is:
+
+```text
+ordinary_reachable = True
+result = False
+```
+
+### Intermediate rescue instance
+
+The intermediate family is:
+
+```text
+rescue-intermediate
+```
+
+It contains two benchmark cases:
+
+```text
+intermediate-rescue-safe-route-positive
+intermediate-rescue-smoke-route-negative
+```
+
+The positive case again uses:
+
+```text
+enter ; locate ; evacuate
+```
+
+The strict intermediate states are the safe corridor and the survivor-location state. Both satisfy the safety condition, so `Khm(start, safe, rescued)` is true.
+
+The negative case is different. The rescued state is still reachable, but every route must pass through an unsafe smoke zone before reaching the goal. Thus ordinary reachability holds, but the intermediate knowing-how formula is false because the safety constraint is violated before the goal is reached.
+
+This shows what the intermediate logic adds over the basic logic: reaching the goal is not enough; the route must remain safe before reaching the goal.
+
+### Regular rescue instance
+
+The regular family is:
+
+```text
+rescue-regular
+```
+
+It contains two benchmark cases:
+
+```text
+regular-rescue-aware-route-positive
+regular-rescue-confused-routes-negative
+```
+
+The positive case gives the queried agent a regular plan class containing exactly the safe rescue route:
+
+```text
+enter ; locate ; evacuate
+```
+
+Since every plan in that class guarantees the rescued state, the regular knowing-how formula is true.
+
+The negative case is the uncertainty example. A safe rescue route exists in the environment, but the agent's regular plan class also contains hazardous routes, such as:
+
+```text
+smoke ; locate ; evacuate
+enter ; blocked-door ; evacuate
+```
+
+Because the agent confuses the safe route with hazardous routes in the same regular plan class, it cannot guarantee that an arbitrary compatible plan reaches the rescued state. Therefore the regular knowing-how formula is false.
+
+This benchmark illustrates the core idea of uncertainty-based knowing-how: having a successful plan in the environment is not the same as knowing how to identify a reliable plan class.
+
+### Budget rescue instance
+
+The budget family is:
+
+```text
+rescue-budget
+```
+
+It contains two vector-budget benchmark cases:
+
+```text
+budget-rescue-time-energy-positive
+budget-rescue-oxygen-negative
+```
+
+The plan is again:
+
+```text
+enter ; locate ; evacuate
+```
+
+The two budget dimensions can be read as:
+
+```text
+dimension 1 = time
+dimension 2 = energy or oxygen
+```
+
+The action costs are:
+
+```text
+enter    = [2, 2]
+locate   = [1, 1]
+evacuate = [2, 3]
+```
+
+Thus the total cost of the rescue route is:
+
+```text
+[5, 6]
+```
+
+In the positive case, the available budget is:
+
+```text
+[5, 6]
+```
+
+The rescue plan fits both dimensions, so the formula is true.
+
+In the negative case, the available budget is:
+
+```text
+[5, 5]
+```
+
+The route is still reachable, but the second resource dimension is too small. Interpreting the second dimension as energy or oxygen, the robot does not have enough resources to complete the rescue. Therefore the budget knowing-how formula is false.
+
+### Expected rescue rows
+
+A full benchmark run should include the following rescue rows:
+
+```text
+basic-rescue-safe-route-positive              True
+basic-rescue-risky-branch-negative            False
+
+intermediate-rescue-safe-route-positive       True
+intermediate-rescue-smoke-route-negative      False
+
+regular-rescue-aware-route-positive           True
+regular-rescue-confused-routes-negative       False
+
+budget-rescue-time-energy-positive            True
+budget-rescue-oxygen-negative                 False
+```
+
+---
+
 ## Benchmark suites
 
 ## 1. Basic knowing-how benchmarks
@@ -547,9 +801,10 @@ They test cases such as:
 robot-corridor-safe-plan
 robot-corridor-risky-only
 robot-corridor-multistart
+rescue-basic
 ```
 
-These are small robot-navigation examples. They are useful because they are easy to explain in a paper or presentation.
+These are small robot-navigation and rescue examples. They are useful because they are easy to explain in a paper or presentation. The `rescue-basic` family asks whether an autonomous rescue robot has a guaranteed plan to enter a damaged building, locate a survivor, and complete the evacuation.
 
 ### Generated parameter sweeps
 
@@ -621,12 +876,14 @@ baking-good-method
 baking-confused-methods
 robot-aware-safe
 robot-unaware-safe
+rescue-regular
 ```
 
 These cases are intended to make the regular-plan semantics intuitive:
 
 - in the baking examples, the agent may or may not distinguish an adequate method from a bad method;
-- in the robot examples, the safe action may exist, but the agent may be unaware of it.
+- in the robot examples, the safe action may exist, but the agent may be unaware of it;
+- in the rescue example, a safe rescue route exists, but the agent may fail if its regular plan class also contains hazardous routes.
 
 ### Generated parameter sweeps
 
@@ -710,9 +967,10 @@ These test:
 robot-safe-corridor
 robot-unsafe-corridor
 robot-risky-branch
+rescue-intermediate
 ```
 
-These are robot-navigation examples where reaching the goal is not enough. The route must also remain safe before the goal is reached.
+These are robot-navigation and rescue examples where reaching the goal is not enough. The route must also remain safe before the goal is reached. The `rescue-intermediate` family separates a safe rescue route from a route that reaches the survivor only by passing through an unsafe smoke zone.
 
 ### Generated parameter sweeps
 
@@ -793,12 +1051,14 @@ delivery-cheap-route
 delivery-expensive-only
 robot-time-energy-positive
 robot-time-energy-negative
+rescue-budget
 ```
 
 These examples are intended to be easy to explain:
 
 - in the delivery examples, the destination may be reachable only by an expensive route;
-- in the robot examples, a route may fit the time budget but fail the energy budget.
+- in the robot examples, a route may fit the time budget but fail the energy budget;
+- in the rescue example, the route is reachable but may exceed one dimension of the time/energy or oxygen budget.
 
 ### Generated parameter sweeps
 
@@ -1106,14 +1366,31 @@ stack run khora-bench -- --full --suite intermediate --out benchmarks/results/ra
 stack run khora-check-intermediate -- benchmarks/results/raw/intermediate-full.csv
 ```
 
+To reproduce only the autonomous rescue running example:
+
+```bash
+stack run khora-bench -- --full --suite rescue-basic --out benchmarks/results/raw/rescue-basic.csv
+stack run khora-bench -- --full --suite rescue-intermediate --out benchmarks/results/raw/rescue-intermediate.csv
+stack run khora-bench -- --full --suite rescue-regular --out benchmarks/results/raw/rescue-regular.csv
+stack run khora-bench -- --full --suite rescue-budget --out benchmarks/results/raw/rescue-budget.csv
+```
+
+If the `Makefile` target is available, the same rescue-only run can be started with:
+
+```bash
+make bench-rescue
+```
+
 ---
 
 ## Summary
 
-The benchmark suite is meant to support three claims.
+The benchmark suite is meant to support four claims.
 
 First, the implemented model checkers return the expected semantic results on hand-written corner cases.
 
 Second, the negative cases are not trivial failures of reachability. Many of them are ordinary-reachable but fail because of the stronger knowing-how requirements, such as strong executability, uncertainty over regular plan classes, intermediate-state constraints, or budget constraints.
 
 Third, the generated families give controlled scalability tests by varying one main parameter at a time, such as number of states, branching width, automaton size, number of plan classes, formula depth, or budget dimension.
+
+Fourth, the autonomous rescue running example gives a compact story that explains the semantic differences between the four logics: reliable rescue plans for the basic logic, safe intermediate states for the intermediate logic, uncertainty over regular plan classes for the regular logic, and resource-bounded rescue for the budget logic.

@@ -27,6 +27,21 @@ safeAction = 1
 riskyAction :: Int
 riskyAction = 2
 
+rescueEnterAction :: Int
+rescueEnterAction = 10
+
+rescueLocateAction :: Int
+rescueLocateAction = 11
+
+rescueEvacuateAction :: Int
+rescueEvacuateAction = 12
+
+rescueSmokeAction :: Int
+rescueSmokeAction = 13
+
+rescueBlockedDoorAction :: Int
+rescueBlockedDoorAction = 14
+
 agentOne :: Int
 agentOne = 1
 
@@ -105,6 +120,16 @@ caseStudyBenchmarks mode =
       False "Robot case study: the safe action exists in the LTS, but the agent is only aware of risky behaviour."
       "case-study" "unaware-safe" Nothing
       robotUnawareSafeModel agentOne (R.Prop startProp) (R.Prop goalProp)
+
+  , mkRegCase mode "regular-rescue-aware-route-positive" "rescue-regular"
+      True "Autonomous rescue case study: the agent is aware of a regular plan class containing exactly the safe rescue route."
+      "case-study" "aware-safe-rescue-route" (Just 4)
+      rescueRegularAwareModel agentOne (R.Prop startProp) (R.Prop goalProp)
+
+  , mkRegCase mode "regular-rescue-confused-routes-negative" "rescue-regular"
+      False "Autonomous rescue case study: a safe rescue route exists, but the agent confuses it with hazardous routes in the same regular plan class."
+      "case-study" "confused-rescue-routes" Nothing
+      rescueRegularConfusedModel agentOne (R.Prop startProp) (R.Prop goalProp)
   ]
 
 generatedBenchmarks :: BenchMode -> [BenchCase]
@@ -571,6 +596,120 @@ robotUnawareSafeModel =
     , R.valuationM = [(0, [startProp]), (1, []), (2, []), (3, [goalProp]), (4, [])]
     }
 
+rescueRegularAwareModel :: R.RegLTSU
+rescueRegularAwareModel =
+  R.RegLTSU
+    { R.statesM = [0, 1, 2, 3, 4]
+    , R.relationsM =
+        [ (rescueEnterAction,
+            [ (0, 1)
+            , (1, 1)
+            , (2, 2)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueLocateAction,
+            [ (0, 0)
+            , (1, 2)
+            , (2, 2)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueEvacuateAction,
+            [ (0, 0)
+            , (1, 1)
+            , (2, 3)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueSmokeAction,
+            [ (0, 4)
+            , (1, 4)
+            , (2, 4)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueBlockedDoorAction,
+            [ (0, 0)
+            , (1, 4)
+            , (2, 4)
+            , (3, 3)
+            , (4, 4)
+            ])
+        ]
+    , R.uncertainty =
+        [ (agentOne,
+            [ sequenceAutomaton
+                [ rescueEnterAction
+                , rescueLocateAction
+                , rescueEvacuateAction
+                ]
+            ])
+        ]
+    , R.valuationM =
+        [ (0, [startProp])
+        , (1, [])
+        , (2, [])
+        , (3, [goalProp])
+        , (4, [])
+        ]
+    }
+
+rescueRegularConfusedModel :: R.RegLTSU
+rescueRegularConfusedModel =
+  R.RegLTSU
+    { R.statesM = [0, 1, 2, 3, 4]
+    , R.relationsM =
+        [ (rescueEnterAction,
+            [ (0, 1)
+            , (1, 1)
+            , (2, 2)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueLocateAction,
+            [ (0, 0)
+            , (1, 2)
+            , (2, 2)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueEvacuateAction,
+            [ (0, 0)
+            , (1, 1)
+            , (2, 3)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueSmokeAction,
+            [ (0, 4)
+            , (1, 4)
+            , (2, 4)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueBlockedDoorAction,
+            [ (0, 0)
+            , (1, 4)
+            , (2, 4)
+            , (3, 3)
+            , (4, 4)
+            ])
+        ]
+    , R.uncertainty =
+        [ (agentOne,
+            [ rescueConfusedRouteAutomaton
+            ])
+        ]
+    , R.valuationM =
+        [ (0, [startProp])
+        , (1, [])
+        , (2, [])
+        , (3, [goalProp])
+        , (4, [])
+        ]
+    }
+
 regularLinePositiveModel :: Int -> R.RegLTSU
 regularLinePositiveModel n0 =
   R.RegLTSU
@@ -899,6 +1038,28 @@ sequenceAutomaton actions =
   where
     n =
       length actions
+
+rescueConfusedRouteAutomaton :: Automaton
+rescueConfusedRouteAutomaton =
+  Automaton
+    { autStates = [0, 1, 2, 3]
+    , autAlphabet =
+        [ rescueEnterAction
+        , rescueLocateAction
+        , rescueEvacuateAction
+        , rescueSmokeAction
+        , rescueBlockedDoorAction
+        ]
+    , autTransitions =
+        [ ((0, rescueEnterAction), [1])
+        , ((0, rescueSmokeAction), [1])
+        , ((1, rescueLocateAction), [2])
+        , ((1, rescueBlockedDoorAction), [2])
+        , ((2, rescueEvacuateAction), [3])
+        ]
+    , autInitial = [0]
+    , autFinal = [3]
+    }
 
 branchingLanguageAutomaton :: Int -> [Int] -> Automaton
 branchingLanguageAutomaton depth0 acts0 =

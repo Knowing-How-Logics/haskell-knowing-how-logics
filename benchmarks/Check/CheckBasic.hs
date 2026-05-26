@@ -102,6 +102,7 @@ checkReachabilitySeparators rows = do
         , "trap-reachable-negative"
         , "branching-depth-trap-negative"
         , "branching-width-trap-negative"
+        , "rescue-basic"
         ]
 
       checked =

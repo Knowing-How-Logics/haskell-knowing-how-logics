@@ -22,6 +22,18 @@ cheapAction = 1
 expensiveAction :: Int
 expensiveAction = 2
 
+rescueEnterAction :: Int
+rescueEnterAction = 10
+
+rescueLocateAction :: Int
+rescueLocateAction = 11
+
+rescueEvacuateAction :: Int
+rescueEvacuateAction = 12
+
+rescueBlockedDoorAction :: Int
+rescueBlockedDoorAction = 13
+
 agentOne :: Int
 agentOne = 1
 
@@ -97,6 +109,16 @@ caseStudyBenchmarks mode =
       False "Robot case study: the route is reachable but exceeds the energy budget."
       "case-study" "time-energy-negative" Nothing
       [3, 5] robotTimeEnergyModel agentOne (B.VBProp startProp) (B.VBProp goalProp)
+
+  , mkVectorCase mode "budget-rescue-time-energy-positive" "rescue-budget"
+      True "Autonomous rescue case study: the rescue plan reaches the survivor and fits both the time and energy budgets."
+      "case-study" "time-energy-rescue" (Just 4)
+      [5, 6] rescueVectorBudgetModel agentOne (B.VBProp startProp) (B.VBProp goalProp)
+
+  , mkVectorCase mode "budget-rescue-oxygen-negative" "rescue-budget"
+      False "Autonomous rescue case study: the rescue route is reachable, but it exceeds the second resource dimension, interpreted as energy or oxygen."
+      "case-study" "oxygen-too-low" Nothing
+      [5, 5] rescueVectorBudgetModel agentOne (B.VBProp startProp) (B.VBProp goalProp)
   ]
 
 generatedBenchmarks :: BenchMode -> [BenchCase]
@@ -632,6 +654,62 @@ robotTimeEnergyModel :: B.VectorBudgetRegLTSU
 robotTimeEnergyModel =
   vectorLineModel 4 2 [1, 2] cheapAction
 
+rescueVectorBudgetModel :: B.VectorBudgetRegLTSU
+rescueVectorBudgetModel =
+  B.VectorBudgetRegLTSU
+    { B.statesVBR = [0, 1, 2, 3, 4]
+    , B.relationsVBR =
+        [ (rescueEnterAction,
+            [ (0, 1)
+            , (1, 1)
+            , (2, 2)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueLocateAction,
+            [ (0, 0)
+            , (1, 2)
+            , (2, 2)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueEvacuateAction,
+            [ (0, 0)
+            , (1, 1)
+            , (2, 3)
+            , (3, 3)
+            , (4, 4)
+            ])
+        , (rescueBlockedDoorAction,
+            [ (0, 4)
+            , (1, 4)
+            , (2, 4)
+            , (3, 3)
+            , (4, 4)
+            ])
+        ]
+    , B.uncertaintyVBR =
+        [ (agentOne,
+            [ rescueSafeRouteAutomaton
+            ])
+        ]
+    , B.weightsVBR =
+        [ ((0, rescueEnterAction), [-2, -2])
+        , ((1, rescueLocateAction), [-1, -1])
+        , ((2, rescueEvacuateAction), [-2, -3])
+        , ((0, rescueBlockedDoorAction), [-4, -5])
+        , ((1, rescueBlockedDoorAction), [-4, -5])
+        , ((2, rescueBlockedDoorAction), [-4, -5])
+        ]
+    , B.valuationVBR =
+        [ (0, [startProp])
+        , (1, [])
+        , (2, [])
+        , (3, [goalProp])
+        , (4, [])
+        ]
+    }
+
 lineBudgetModel :: Int -> Int -> Int -> B.BudgetRegLTSU
 lineBudgetModel n0 cost action =
   B.BudgetRegLTSU
@@ -756,6 +834,24 @@ singleActionAutomaton a =
     , autTransitions = [((0, a), [1])]
     , autInitial = [0]
     , autFinal = [1]
+    }
+
+rescueSafeRouteAutomaton :: Automaton
+rescueSafeRouteAutomaton =
+  Automaton
+    { autStates = [0, 1, 2, 3]
+    , autAlphabet =
+        [ rescueEnterAction
+        , rescueLocateAction
+        , rescueEvacuateAction
+        ]
+    , autTransitions =
+        [ ((0, rescueEnterAction), [1])
+        , ((1, rescueLocateAction), [2])
+        , ((2, rescueEvacuateAction), [3])
+        ]
+    , autInitial = [0]
+    , autFinal = [3]
     }
 
 lineAutomaton :: Int -> Int -> Automaton

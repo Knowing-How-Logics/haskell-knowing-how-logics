@@ -30,6 +30,15 @@ safeAction = 1
 riskyAction :: L.Action
 riskyAction = 2
 
+rescueEnterAction :: L.Action
+rescueEnterAction = 10
+
+rescueLocateAction :: L.Action
+rescueLocateAction = 11
+
+rescueEvacuateAction :: L.Action
+rescueEvacuateAction = 12
+
 intermediateBenchmarks :: BenchMode -> [BenchCase]
 intermediateBenchmarks mode =
   concat
@@ -102,6 +111,16 @@ caseStudyBenchmarks mode =
       False "Robot corridor case study: a risky action may either progress safely or fall into an unsafe trap."
       "case-study" "risky-branch" Nothing
       robotRiskyBranchModel (I.IP startProp) (I.IP safeProp) (I.IP goalProp)
+
+  , mkICase mode "intermediate-rescue-safe-route-positive" "rescue-intermediate"
+      True "Autonomous rescue case study: the robot can complete the rescue while every strict intermediate state remains safe."
+      "case-study" "safe-rescue-route" (Just 3)
+      rescueIntermediateSafeModel (I.IP startProp) (I.IP safeProp) (I.IP goalProp)
+
+  , mkICase mode "intermediate-rescue-smoke-route-negative" "rescue-intermediate"
+      False "Autonomous rescue case study: the survivor is reachable, but every rescue route must pass through an unsafe smoke zone before the goal."
+      "case-study" "smoke-route" Nothing
+      rescueIntermediateSmokeModel (I.IP startProp) (I.IP safeProp) (I.IP goalProp)
   ]
 
 generatedBenchmarks :: BenchMode -> [BenchCase]
@@ -582,6 +601,60 @@ robotRiskyBranchModel =
     , (2, [safeProp])
     , (3, [goalProp])
     , (4, [])
+    ]
+
+
+rescueIntermediateSafeModel :: B.AbilityMap
+rescueIntermediateSafeModel =
+  mkModel
+    [0, 1, 2, 3, 4]
+    [ (rescueEnterAction,
+        [ (0, 1)
+        , (1, 1)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        ])
+    , (rescueLocateAction,
+        [ (0, 0)
+        , (1, 2)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        ])
+    , (rescueEvacuateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 3)
+        , (3, 3)
+        , (4, 4)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [safeProp])
+    , (2, [safeProp])
+    , (3, [goalProp])
+    , (4, [])
+    ]
+
+rescueIntermediateSmokeModel :: B.AbilityMap
+rescueIntermediateSmokeModel =
+  mkModel
+    [0, 1, 2, 3]
+    [ (rescueEnterAction,
+        [ (0, 1)
+        ])
+    , (rescueLocateAction,
+        [ (1, 2)
+        ])
+    , (rescueEvacuateAction,
+        [ (2, 3)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [])
+    , (2, [safeProp])
+    , (3, [goalProp])
     ]
 
 corridorPositiveModel :: Int -> B.AbilityMap
