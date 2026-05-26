@@ -38,6 +38,7 @@ main = do
 
       checkReachabilitySeparators rows
       checkVectorBudgetRows rows
+      checkRescueRunningExampleRows rows
 
       ok ("Checked " ++ show (length rows) ++ " benchmark rows.")
       ok "All benchmark rows passed."
@@ -47,6 +48,7 @@ main = do
       ok "All required benchmark families are present."
       ok "Reachability-separator checks passed."
       ok "Vector-budget rows record budget dimensions."
+      ok "Autonomous rescue running-example rows are present and semantically consistent."
       ok "Benchmark CSV looks consistent."
 
 checkLogicExists :: [Row] -> String -> IO ()
@@ -305,6 +307,119 @@ checkVectorBudgetRows rows = do
   if null bad
     then pure ()
     else failNow ("Some vector-budget rows do not record budget_dimension: " ++ intercalate ", " bad)
+
+checkRescueRunningExampleRows :: [Row] -> IO ()
+checkRescueRunningExampleRows rows = do
+  let required =
+        [ ("basic-rescue-safe-route-positive", "basic", "rescue-basic", "True")
+        , ("basic-rescue-risky-branch-negative", "basic", "rescue-basic", "False")
+
+        , ("intermediate-rescue-safe-route-positive", "intermediate", "rescue-intermediate", "True")
+        , ("intermediate-rescue-smoke-route-negative", "intermediate", "rescue-intermediate", "False")
+        , ("intermediate-rescue-risky-branch-negative", "intermediate", "rescue-intermediate", "False")
+        , ("intermediate-rescue-blocked-door-detour-positive", "intermediate", "rescue-intermediate", "True")
+
+        , ("regular-rescue-aware-route-positive", "regular", "rescue-regular", "True")
+        , ("regular-rescue-confused-routes-negative", "regular", "rescue-regular", "False")
+        , ("regular-rescue-unaware-safe-route-negative", "regular", "rescue-regular", "False")
+        , ("regular-rescue-alternative-safe-routes-positive", "regular", "rescue-regular", "True")
+
+        , ("budget-rescue-time-energy-positive", "budget", "rescue-budget", "True")
+        , ("budget-rescue-oxygen-negative", "budget", "rescue-budget", "False")
+        , ("budget-rescue-detour-within-budget-positive", "budget", "rescue-budget", "True")
+        , ("budget-rescue-detour-over-budget-negative", "budget", "rescue-budget", "False")
+        ]
+
+      positiveWitnesses =
+        [ ("basic-rescue-safe-route-positive", "3")
+        , ("intermediate-rescue-safe-route-positive", "3")
+        , ("intermediate-rescue-blocked-door-detour-positive", "4")
+        , ("regular-rescue-aware-route-positive", "4")
+        , ("regular-rescue-alternative-safe-routes-positive", "5")
+        , ("budget-rescue-time-energy-positive", "4")
+        , ("budget-rescue-detour-within-budget-positive", "5")
+        ]
+
+      negativeSeparators =
+        [ "basic-rescue-risky-branch-negative"
+        , "intermediate-rescue-smoke-route-negative"
+        , "intermediate-rescue-risky-branch-negative"
+        , "regular-rescue-confused-routes-negative"
+        , "regular-rescue-unaware-safe-route-negative"
+        , "budget-rescue-oxygen-negative"
+        , "budget-rescue-detour-over-budget-negative"
+        ]
+
+      budgetRows =
+        [ "budget-rescue-time-energy-positive"
+        , "budget-rescue-oxygen-negative"
+        , "budget-rescue-detour-within-budget-positive"
+        , "budget-rescue-detour-over-budget-negative"
+        ]
+
+      rowsByName name =
+        [ r | r <- rows, value r "name" == name ]
+
+      missing =
+        [ name
+        | (name, _, _, _) <- required
+        , null (rowsByName name)
+        ]
+
+      wrong =
+        [ name
+        | (name, logicName, familyName, expectedValue) <- required
+        , r <- rowsByName name
+        , value r "logic" /= logicName
+           || value r "family" /= familyName
+           || value r "expected" /= expectedValue
+           || value r "result" /= expectedValue
+           || value r "passed" /= "True"
+           || value r "stable" /= "True"
+        ]
+
+      badPositiveWitness =
+        [ value r "name"
+        | (name, size) <- positiveWitnesses
+        , r <- rowsByName name
+        , value r "witness_found" /= "True"
+           || value r "witness_size" /= size
+           || value r "witness_size_passed" /= "True"
+        ]
+
+      badNegativeSeparator =
+        [ value r "name"
+        | name <- negativeSeparators
+        , r <- rowsByName name
+        , value r "ordinary_reachable" /= "True"
+           || value r "witness_found" /= "False"
+        ]
+
+      badBudgetDimension =
+        [ value r "name"
+        | name <- budgetRows
+        , r <- rowsByName name
+        , value r "budget_dimension" /= "2"
+        ]
+
+  if null missing
+     && null wrong
+     && null badPositiveWitness
+     && null badNegativeSeparator
+     && null badBudgetDimension
+    then pure ()
+    else failNow
+      ( "Autonomous rescue running-example checks failed. Missing: "
+        ++ intercalate ", " missing
+        ++ ". Wrong result/metadata: "
+        ++ intercalate ", " wrong
+        ++ ". Bad positive witness: "
+        ++ intercalate ", " badPositiveWitness
+        ++ ". Bad negative separator: "
+        ++ intercalate ", " badNegativeSeparator
+        ++ ". Bad budget dimension: "
+        ++ intercalate ", " badBudgetDimension
+      )
 
 names :: [Row] -> [String]
 names =

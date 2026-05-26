@@ -39,6 +39,15 @@ rescueLocateAction = 11
 rescueEvacuateAction :: L.Action
 rescueEvacuateAction = 12
 
+rescueRiskyAction :: L.Action
+rescueRiskyAction = 13
+
+rescueBypassAction :: L.Action
+rescueBypassAction = 14
+
+rescueBlockedDoorAction :: L.Action
+rescueBlockedDoorAction = 15
+
 intermediateBenchmarks :: BenchMode -> [BenchCase]
 intermediateBenchmarks mode =
   concat
@@ -121,6 +130,16 @@ caseStudyBenchmarks mode =
       False "Autonomous rescue case study: the survivor is reachable, but every rescue route must pass through an unsafe smoke zone before the goal."
       "case-study" "smoke-route" Nothing
       rescueIntermediateSmokeModel (I.IP startProp) (I.IP safeProp) (I.IP goalProp)
+
+  , mkICase mode "intermediate-rescue-risky-branch-negative" "rescue-intermediate"
+      False "Autonomous rescue case study: a risky rescue move may progress toward the survivor, but it may also branch into smoke or collapse before the goal."
+      "case-study" "risky-branch" Nothing
+      rescueIntermediateRiskyBranchModel (I.IP startProp) (I.IP safeProp) (I.IP goalProp)
+
+  , mkICase mode "intermediate-rescue-blocked-door-detour-positive" "rescue-intermediate"
+      True "Autonomous rescue case study: a blocked direct door can be avoided by a safe detour before locating and evacuating the survivor."
+      "case-study" "blocked-door-detour" (Just 4)
+      rescueIntermediateBlockedDoorDetourModel (I.IP startProp) (I.IP safeProp) (I.IP goalProp)
   ]
 
 generatedBenchmarks :: BenchMode -> [BenchCase]
@@ -655,6 +674,81 @@ rescueIntermediateSmokeModel =
     , (1, [])
     , (2, [safeProp])
     , (3, [goalProp])
+    ]
+
+rescueIntermediateRiskyBranchModel :: B.AbilityMap
+rescueIntermediateRiskyBranchModel =
+  mkModel
+    [0, 1, 2, 3, 4]
+    [ (rescueRiskyAction,
+        [ (0, 1)
+        , (0, 4)
+        , (1, 2)
+        , (1, 4)
+        , (2, 3)
+        , (2, 4)
+        , (3, 3)
+        , (4, 4)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [safeProp])
+    , (2, [safeProp])
+    , (3, [goalProp])
+    , (4, [])
+    ]
+
+rescueIntermediateBlockedDoorDetourModel :: B.AbilityMap
+rescueIntermediateBlockedDoorDetourModel =
+  mkModel
+    [0, 1, 2, 3, 4, 5]
+    [ (rescueEnterAction,
+        [ (0, 1)
+        , (1, 1)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueBypassAction,
+        [ (0, 0)
+        , (1, 2)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueLocateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 3)
+        , (3, 3)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueEvacuateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 2)
+        , (3, 4)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueBlockedDoorAction,
+        [ (0, 5)
+        , (1, 5)
+        , (2, 5)
+        , (3, 5)
+        , (4, 4)
+        , (5, 5)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [safeProp])
+    , (2, [safeProp])
+    , (3, [safeProp])
+    , (4, [goalProp])
+    , (5, [])
     ]
 
 corridorPositiveModel :: Int -> B.AbilityMap

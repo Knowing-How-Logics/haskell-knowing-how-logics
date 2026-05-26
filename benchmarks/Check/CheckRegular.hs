@@ -35,6 +35,7 @@ main = do
       checkRequiredFamilies regularRows
       checkManualCases regularRows
       checkReachabilitySeparators regularRows
+      checkRescueCases regularRows
       checkAwarenessCases regularRows
       checkMixedClassCases regularRows
       checkRegularLanguageCases regularRows
@@ -48,6 +49,7 @@ main = do
       ok "Witness-size checks passed where an expected witness size is provided."
       ok "Required Regular benchmark families are present."
       ok "Regular reachability-separator checks passed."
+      ok "Regular rescue case-study checks passed."
       ok "Regular awareness, mixed-class, automaton-only, regular-language, and multi-agent checks passed."
       ok "Regular benchmark CSV looks consistent."
 
@@ -218,6 +220,81 @@ checkReachabilitySeparators rows = do
     else failNow
       ( "Some Regular reachability separators are not ordinary-reachable: "
         ++ intercalate ", " bad
+      )
+
+checkRescueCases :: [Row] -> IO ()
+checkRescueCases rows = do
+  let required =
+        [ ("regular-rescue-aware-route-positive", "True")
+        , ("regular-rescue-confused-routes-negative", "False")
+        , ("regular-rescue-unaware-safe-route-negative", "False")
+        , ("regular-rescue-alternative-safe-routes-positive", "True")
+        ]
+
+      missing =
+        [ name
+        | (name, _) <- required
+        , not (any (\r -> value r "name" == name) rows)
+        ]
+
+      wrong =
+        [ name
+        | (name, expectedValue) <- required
+        , r <- rows
+        , value r "name" == name
+        , value r "expected" /= expectedValue || value r "result" /= expectedValue
+        ]
+
+      badAwarePositive =
+        names
+          [ r
+          | r <- rows
+          , value r "name" == "regular-rescue-aware-route-positive"
+          , value r "witness_found" /= "True"
+             || value r "witness_size" /= "4"
+             || value r "witness_size_passed" /= "True"
+          ]
+
+      badAlternativePositive =
+        names
+          [ r
+          | r <- rows
+          , value r "name" == "regular-rescue-alternative-safe-routes-positive"
+          , value r "witness_found" /= "True"
+             || value r "witness_size" /= "5"
+             || value r "witness_size_passed" /= "True"
+          ]
+
+      badNegative =
+        names
+          [ r
+          | r <- rows
+          , value r "name" `elem`
+              [ "regular-rescue-confused-routes-negative"
+              , "regular-rescue-unaware-safe-route-negative"
+              ]
+          , value r "ordinary_reachable" /= "True"
+             || value r "ordinary_all_pre_reachable" /= "True"
+             || value r "witness_found" /= "False"
+          ]
+
+  if null missing
+     && null wrong
+     && null badAwarePositive
+     && null badAlternativePositive
+     && null badNegative
+    then pure ()
+    else failNow
+      ( "Regular rescue cases failed. Missing: "
+        ++ intercalate ", " missing
+        ++ ". Wrong: "
+        ++ intercalate ", " wrong
+        ++ ". Bad aware positive: "
+        ++ intercalate ", " badAwarePositive
+        ++ ". Bad alternative positive: "
+        ++ intercalate ", " badAlternativePositive
+        ++ ". Bad negative: "
+        ++ intercalate ", " badNegative
       )
 
 checkAwarenessCases :: [Row] -> IO ()

@@ -37,6 +37,7 @@ main = do
       checkReachabilitySeparators intermediateRows
       checkIntermediateConstraintCases intermediateRows
       checkMultiStartCases intermediateRows
+      checkRescueCases intermediateRows
       checkFormulaDepth intermediateRows
 
       ok ("Checked " ++ show (length intermediateRows) ++ " Intermediate benchmark rows.")
@@ -45,6 +46,7 @@ main = do
       ok "Witness-size checks passed where an expected witness size is provided."
       ok "Required Intermediate benchmark families are present."
       ok "Intermediate reachability-separator and constraint checks passed."
+      ok "Intermediate rescue case-study checks passed."
       ok "Intermediate benchmark CSV looks consistent."
 
 checkAllPassed :: [Row] -> IO ()
@@ -254,6 +256,70 @@ checkMultiStartCases rows = do
   if null bad
     then pure ()
     else failNow ("Some multi-start-one-unsafe rows failed: " ++ intercalate ", " bad)
+
+checkRescueCases :: [Row] -> IO ()
+checkRescueCases rows = do
+  let required =
+        [ ("intermediate-rescue-safe-route-positive", "True")
+        , ("intermediate-rescue-smoke-route-negative", "False")
+        , ("intermediate-rescue-risky-branch-negative", "False")
+        , ("intermediate-rescue-blocked-door-detour-positive", "True")
+        ]
+
+      missing =
+        [ name
+        | (name, _) <- required
+        , not (any (\r -> value r "name" == name) rows)
+        ]
+
+      wrong =
+        [ name
+        | (name, expectedValue) <- required
+        , r <- rows
+        , value r "name" == name
+        , value r "expected" /= expectedValue || value r "result" /= expectedValue
+        ]
+
+      badPositiveWitness =
+        names
+          [ r
+          | r <- rows
+          , (value r "name" == "intermediate-rescue-safe-route-positive"
+              && ( value r "witness_found" /= "True"
+                   || value r "witness_size" /= "3"
+                   || value r "witness_size_passed" /= "True"
+                 ))
+             || (value r "name" == "intermediate-rescue-blocked-door-detour-positive"
+              && ( value r "witness_found" /= "True"
+                   || value r "witness_size" /= "4"
+                   || value r "witness_size_passed" /= "True"
+                 ))
+          ]
+
+      badNegativeSeparator =
+        names
+          [ r
+          | r <- rows
+          , value r "name" `elem`
+              [ "intermediate-rescue-smoke-route-negative"
+              , "intermediate-rescue-risky-branch-negative"
+              ]
+          , value r "ordinary_reachable" /= "True"
+             || value r "witness_found" /= "False"
+          ]
+
+  if null missing && null wrong && null badPositiveWitness && null badNegativeSeparator
+    then pure ()
+    else failNow
+      ( "Intermediate rescue cases failed. Missing: "
+        ++ intercalate ", " missing
+        ++ ". Wrong: "
+        ++ intercalate ", " wrong
+        ++ ". Bad positive witness: "
+        ++ intercalate ", " badPositiveWitness
+        ++ ". Bad negative separator: "
+        ++ intercalate ", " badNegativeSeparator
+      )
 
 checkFormulaDepth :: [Row] -> IO ()
 checkFormulaDepth rows = do

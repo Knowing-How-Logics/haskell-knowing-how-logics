@@ -37,6 +37,7 @@ main = do
       checkReachabilitySeparators budgetRows
       checkBudgetNegativeCases budgetRows
       checkVectorCases budgetRows
+      checkRescueCases budgetRows
       checkFormulaDepth budgetRows
 
       ok ("Checked " ++ show (length budgetRows) ++ " Budget benchmark rows.")
@@ -45,6 +46,7 @@ main = do
       ok "Witness-size checks passed where an expected witness size is provided."
       ok "Required Budget benchmark families are present."
       ok "Budget and vector-budget negative cases passed."
+      ok "Budget rescue case-study checks passed."
       ok "Budget benchmark CSV looks consistent."
 
 checkAllPassed :: [Row] -> IO ()
@@ -281,6 +283,90 @@ checkVectorCases rows = do
   if null badNegative
     then pure ()
     else failNow ("Some vector-budget negative rows failed: " ++ intercalate ", " badNegative)
+
+
+checkRescueCases :: [Row] -> IO ()
+checkRescueCases rows = do
+  let required =
+        [ ("budget-rescue-time-energy-positive", "True")
+        , ("budget-rescue-oxygen-negative", "False")
+        , ("budget-rescue-detour-within-budget-positive", "True")
+        , ("budget-rescue-detour-over-budget-negative", "False")
+        ]
+
+      missing =
+        [ name
+        | (name, _) <- required
+        , not (any (\r -> value r "name" == name) rows)
+        ]
+
+      wrong =
+        [ name
+        | (name, expectedValue) <- required
+        , r <- rows
+        , value r "name" == name
+        , value r "expected" /= expectedValue || value r "result" /= expectedValue
+        ]
+
+      badPositiveWitness =
+        names
+          [ r
+          | r <- rows
+          , (value r "name", value r "witness_size") `elem`
+              [ ("budget-rescue-time-energy-positive", "4")
+              , ("budget-rescue-detour-within-budget-positive", "5")
+              ]
+          , value r "witness_found" /= "True"
+             || value r "witness_size_passed" /= "True"
+             || value r "budget_dimension" /= "2"
+          ]
+
+      badPositiveWitnessSize =
+        names
+          [ r
+          | r <- rows
+          , value r "name" == "budget-rescue-time-energy-positive"
+          , value r "witness_size" /= "4"
+          ]
+        ++
+        names
+          [ r
+          | r <- rows
+          , value r "name" == "budget-rescue-detour-within-budget-positive"
+          , value r "witness_size" /= "5"
+          ]
+
+      badNegativeSeparator =
+        names
+          [ r
+          | r <- rows
+          , value r "name" `elem`
+              [ "budget-rescue-oxygen-negative"
+              , "budget-rescue-detour-over-budget-negative"
+              ]
+          , value r "ordinary_reachable" /= "True"
+             || value r "witness_found" /= "False"
+             || value r "budget_dimension" /= "2"
+          ]
+
+  if null missing
+      && null wrong
+      && null badPositiveWitness
+      && null badPositiveWitnessSize
+      && null badNegativeSeparator
+    then pure ()
+    else failNow
+      ( "Budget rescue cases failed. Missing: "
+        ++ intercalate ", " missing
+        ++ ". Wrong: "
+        ++ intercalate ", " wrong
+        ++ ". Bad positive witness: "
+        ++ intercalate ", " badPositiveWitness
+        ++ ". Bad positive witness size: "
+        ++ intercalate ", " badPositiveWitnessSize
+        ++ ". Bad negative separator: "
+        ++ intercalate ", " badNegativeSeparator
+      )
 
 checkFormulaDepth :: [Row] -> IO ()
 checkFormulaDepth rows = do

@@ -194,17 +194,8 @@ The autonomous rescue families can also be selected directly:
 
 ```bash
 stack run khora-bench -- --full --suite rescue-basic
-```
-
-```bash
 stack run khora-bench -- --full --suite rescue-intermediate
-```
-
-```bash
 stack run khora-bench -- --full --suite rescue-regular
-```
-
-```bash
 stack run khora-bench -- --full --suite rescue-budget
 ```
 
@@ -388,7 +379,8 @@ The all-in-one checker verifies that:
 - witness-size checks pass where expected witness sizes are provided;
 - all required benchmark families are present;
 - there are genuine reachability-separator cases;
-- vector-budget rows record their budget dimension.
+- vector-budget rows record their budget dimension;
+- all autonomous rescue running-example rows are present and semantically consistent.
 
 ---
 
@@ -441,7 +433,8 @@ It verifies:
 - regular-language width and depth cases behave as expected;
 - automaton-only cases behave as expected;
 - different agents may have different knowing-how abilities in the same model;
-- formula-depth cases behave as expected.
+- formula-depth cases behave as expected;
+- regular rescue case-study rows behave as expected.
 
 ---
 
@@ -468,7 +461,8 @@ It verifies:
 - reachability-separator cases are genuine;
 - intermediate-constraint negative cases are not merely unreachable;
 - multi-start unsafe cases behave as expected;
-- formula-depth cases behave as expected.
+- formula-depth cases behave as expected;
+- intermediate rescue case-study rows behave as expected.
 
 ---
 
@@ -494,7 +488,8 @@ It verifies:
 - scalar-budget negative cases behave as expected;
 - vector-budget rows record their budget dimension;
 - vector-budget negative cases behave as expected;
-- formula-depth cases behave as expected.
+- formula-depth cases behave as expected;
+- budget rescue case-study rows behave as expected.
 
 ---
 
@@ -565,6 +560,12 @@ The common safe rescue plan is:
 enter ; locate ; evacuate
 ```
 
+Some versions also use a safe detour plan:
+
+```text
+enter ; bypass ; locate ; evacuate
+```
+
 The intended state interpretation is:
 
 ```text
@@ -624,14 +625,16 @@ The intermediate family is:
 rescue-intermediate
 ```
 
-It contains two benchmark cases:
+It contains four benchmark cases:
 
 ```text
 intermediate-rescue-safe-route-positive
 intermediate-rescue-smoke-route-negative
+intermediate-rescue-risky-branch-negative
+intermediate-rescue-blocked-door-detour-positive
 ```
 
-The positive case again uses:
+The positive safe-route case uses:
 
 ```text
 enter ; locate ; evacuate
@@ -639,7 +642,17 @@ enter ; locate ; evacuate
 
 The strict intermediate states are the safe corridor and the survivor-location state. Both satisfy the safety condition, so `Khm(start, safe, rescued)` is true.
 
-The negative case is different. The rescued state is still reachable, but every route must pass through an unsafe smoke zone before reaching the goal. Thus ordinary reachability holds, but the intermediate knowing-how formula is false because the safety constraint is violated before the goal is reached.
+The smoke-route negative case is different. The rescued state is still reachable, but every route must pass through an unsafe smoke zone before reaching the goal. Thus ordinary reachability holds, but the intermediate knowing-how formula is false because the safety constraint is violated before the goal is reached.
+
+The risky-branch negative case models nondeterministic danger. A risky rescue action may make progress, but it may also enter a smoke or collapse trap. Since not all possible intermediate successors are safe, the formula is false.
+
+The blocked-door detour positive case models a safe alternative route. The direct door is blocked, but the robot can take a safe bypass route:
+
+```text
+enter ; bypass ; locate ; evacuate
+```
+
+All strict intermediate states are safe, so the formula is true.
 
 This shows what the intermediate logic adds over the basic logic: reaching the goal is not enough; the route must remain safe before reaching the goal.
 
@@ -651,14 +664,16 @@ The regular family is:
 rescue-regular
 ```
 
-It contains two benchmark cases:
+It contains four benchmark cases:
 
 ```text
 regular-rescue-aware-route-positive
 regular-rescue-confused-routes-negative
+regular-rescue-unaware-safe-route-negative
+regular-rescue-alternative-safe-routes-positive
 ```
 
-The positive case gives the queried agent a regular plan class containing exactly the safe rescue route:
+The aware-route positive case gives the queried agent a regular plan class containing exactly the safe rescue route:
 
 ```text
 enter ; locate ; evacuate
@@ -666,7 +681,7 @@ enter ; locate ; evacuate
 
 Since every plan in that class guarantees the rescued state, the regular knowing-how formula is true.
 
-The negative case is the uncertainty example. A safe rescue route exists in the environment, but the agent's regular plan class also contains hazardous routes, such as:
+The confused-routes negative case is the uncertainty example. A safe rescue route exists in the environment, but the agent's regular plan class also contains hazardous routes, such as:
 
 ```text
 smoke ; locate ; evacuate
@@ -674,6 +689,17 @@ enter ; blocked-door ; evacuate
 ```
 
 Because the agent confuses the safe route with hazardous routes in the same regular plan class, it cannot guarantee that an arbitrary compatible plan reaches the rescued state. Therefore the regular knowing-how formula is false.
+
+The unaware-safe-route negative case separates environmental ability from agent awareness. The safe route exists in the LTS, but it is not included in the agent's available regular plan classes. The agent is aware only of hazardous procedures, so the formula is false even though the safe route exists in the environment.
+
+The alternative-safe-routes positive case shows that a regular plan class may contain more than one plan. The class contains two safe rescue procedures:
+
+```text
+enter ; locate ; evacuate
+enter ; bypass ; locate ; evacuate
+```
+
+Both routes guarantee rescue, so the whole regular plan class is a valid witness.
 
 This benchmark illustrates the core idea of uncertainty-based knowing-how: having a successful plan in the environment is not the same as knowing how to identify a reliable plan class.
 
@@ -685,17 +711,13 @@ The budget family is:
 rescue-budget
 ```
 
-It contains two vector-budget benchmark cases:
+It contains four vector-budget benchmark cases:
 
 ```text
 budget-rescue-time-energy-positive
 budget-rescue-oxygen-negative
-```
-
-The plan is again:
-
-```text
-enter ; locate ; evacuate
+budget-rescue-detour-within-budget-positive
+budget-rescue-detour-over-budget-negative
 ```
 
 The two budget dimensions can be read as:
@@ -705,7 +727,13 @@ dimension 1 = time
 dimension 2 = energy or oxygen
 ```
 
-The action costs are:
+For the direct rescue route:
+
+```text
+enter ; locate ; evacuate
+```
+
+the action costs are:
 
 ```text
 enter    = [2, 2]
@@ -713,13 +741,13 @@ locate   = [1, 1]
 evacuate = [2, 3]
 ```
 
-Thus the total cost of the rescue route is:
+Thus the total cost is:
 
 ```text
 [5, 6]
 ```
 
-In the positive case, the available budget is:
+In the positive direct-route case, the budget is exactly:
 
 ```text
 [5, 6]
@@ -727,30 +755,54 @@ In the positive case, the available budget is:
 
 The rescue plan fits both dimensions, so the formula is true.
 
-In the negative case, the available budget is:
+In the oxygen-negative case, the route is still reachable but the budget is:
 
 ```text
 [5, 5]
 ```
 
-The route is still reachable, but the second resource dimension is too small. Interpreting the second dimension as energy or oxygen, the robot does not have enough resources to complete the rescue. Therefore the budget knowing-how formula is false.
+The second resource dimension is too small. Interpreting the second dimension as energy or oxygen, the robot does not have enough resources to complete the rescue, so the formula is false.
+
+The detour positive case models a blocked door. The robot cannot use the direct route and must take a safe bypass route:
+
+```text
+enter ; bypass ; locate ; evacuate
+```
+
+The detour costs more, with total cost:
+
+```text
+[7, 8]
+```
+
+When the budget is `[7, 8]`, the detour route is feasible and the formula is true.
+
+The detour negative case uses the same reachable detour route, but the available budget is `[7, 7]`. The second dimension is too small, so the formula is false.
+
+This benchmark shows what the budget extension adds: a route may be safe and reachable, but still fail because it exceeds a resource bound.
 
 ### Expected rescue rows
 
 A full benchmark run should include the following rescue rows:
 
 ```text
-basic-rescue-safe-route-positive              True
-basic-rescue-risky-branch-negative            False
+basic-rescue-safe-route-positive                   True
+basic-rescue-risky-branch-negative                 False
 
-intermediate-rescue-safe-route-positive       True
-intermediate-rescue-smoke-route-negative      False
+intermediate-rescue-safe-route-positive            True
+intermediate-rescue-smoke-route-negative           False
+intermediate-rescue-risky-branch-negative          False
+intermediate-rescue-blocked-door-detour-positive   True
 
-regular-rescue-aware-route-positive           True
-regular-rescue-confused-routes-negative       False
+regular-rescue-aware-route-positive                True
+regular-rescue-confused-routes-negative            False
+regular-rescue-unaware-safe-route-negative         False
+regular-rescue-alternative-safe-routes-positive    True
 
-budget-rescue-time-energy-positive            True
-budget-rescue-oxygen-negative                 False
+budget-rescue-time-energy-positive                 True
+budget-rescue-oxygen-negative                      False
+budget-rescue-detour-within-budget-positive        True
+budget-rescue-detour-over-budget-negative          False
 ```
 
 ---
@@ -883,7 +935,7 @@ These cases are intended to make the regular-plan semantics intuitive:
 
 - in the baking examples, the agent may or may not distinguish an adequate method from a bad method;
 - in the robot examples, the safe action may exist, but the agent may be unaware of it;
-- in the rescue example, a safe rescue route exists, but the agent may fail if its regular plan class also contains hazardous routes.
+- in the rescue example, a safe rescue route may exist, but the agent may fail if its regular plan class omits it or also contains hazardous routes.
 
 ### Generated parameter sweeps
 
@@ -970,7 +1022,7 @@ robot-risky-branch
 rescue-intermediate
 ```
 
-These are robot-navigation and rescue examples where reaching the goal is not enough. The route must also remain safe before the goal is reached. The `rescue-intermediate` family separates a safe rescue route from a route that reaches the survivor only by passing through an unsafe smoke zone.
+These are robot-navigation and rescue examples where reaching the goal is not enough. The route must also remain safe before the goal is reached. The `rescue-intermediate` family separates a safe rescue route from routes that reach the survivor only by passing through smoke, by risking a collapse branch, or by taking a safe blocked-door detour.
 
 ### Generated parameter sweeps
 
@@ -1058,7 +1110,7 @@ These examples are intended to be easy to explain:
 
 - in the delivery examples, the destination may be reachable only by an expensive route;
 - in the robot examples, a route may fit the time budget but fail the energy budget;
-- in the rescue example, the route is reachable but may exceed one dimension of the time/energy or oxygen budget.
+- in the rescue example, the route is reachable but may exceed one dimension of the time/energy or oxygen budget, especially when a blocked door forces a detour.
 
 ### Generated parameter sweeps
 
