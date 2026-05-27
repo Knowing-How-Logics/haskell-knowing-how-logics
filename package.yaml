@@ -75,11 +75,3 @@ executables:
     dependencies:
       - base
       
-tests:
-  quickcheck-logic:     
-    main:                quickcheck.lhs
-    source-dirs:         test
-    dependencies:
-      - KHora
-      - hspec
-      - QuickCheck

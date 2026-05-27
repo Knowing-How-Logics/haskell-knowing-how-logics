@@ -435,6 +435,7 @@ budgetOutcome purpose primaryParameter parameterValue expectedWitness budget mod
     { outcomeResult                  = result
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
+    , outcomeWitnessAgrees           = Nothing
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue
@@ -476,6 +477,7 @@ vectorOutcome purpose primaryParameter parameterValue expectedWitness budget mod
     { outcomeResult                  = result
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
+    , outcomeWitnessAgrees           = Nothing
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue

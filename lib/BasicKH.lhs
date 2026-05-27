@@ -45,7 +45,6 @@ module BasicKH where
 import Data.List (nub, delete, sort)
 import Data.List.NonEmpty (NonEmpty(..), toList)
 import Text.Parsec hiding (State)
-import Test.QuickCheck
 import LTS
 import GraphSearch
 \end{code}
@@ -70,61 +69,6 @@ data AbilityMap = LTS {
 } deriving(Show)
 
 \end{code}
-
-\begin{code}
--- Given an LTS and formula, returns the states that satisfy said formula
-statesSatisifyingBounded :: AbilityMap -> Form -> [State]
-statesSatisifyingBounded m f =
-    [s | s <- toList (states m), isTrueBounded (m, s) f]
-
--- Given an LTS, find all plans.
-findPlans :: AbilityMap -> [Plan]
-findPlans m = [] : nub (concatMap (plansFrom depth) (toList (states m)))
-  where
-    -- For now we limit the depth to avoid infinite loops.
-    depth = 5
-
-    -- Flatten transitions
-    edges :: [(Action,(State,State))]
-    edges = [ (a,(u,v))| (a,rel) <- transitions m, (u,v) <- rel ]
-
-    -- Generate all plans from a given state up to our specified depth
-    plansFrom :: Int -> State -> [Plan]
-    plansFrom 0 _ = []
-    plansFrom d s = 
-        [ [a] | (a,(x,_)) <- edges, x == s ] -- single action plans
-        ++ [ a:p | (a,(x,y)) <- edges, x == s, p <- plansFrom (d-1) y ]
-
-
-\end{code}
-
-
-\begin{code}
-isTrueBounded :: (AbilityMap, State) -> Form -> Bool
-isTrueBounded _ T = True
-isTrueBounded (m, s) (P p) =
-  p `elem` valuationAt (valuation m) s
-isTrueBounded (m, s) (Neg f) = not (isTrueBounded (m, s) f)
-isTrueBounded (m, s) (Conj f g) = isTrueBounded (m, s) f && isTrueBounded (m, s) g
-
--- KH is NOT local; its truth does not depend on the state at which it is evaluated. 
--- KH either holds at all states, or none of them. 
-isTrueBounded (m, _) (KH f g) = 
-    any (\a -> 
-        all (\s -> 
-            stronglyExecutableAt rs s a 
-            && all (\t -> isTrueBounded (m,t) g) (executePlan rs s a)
-        ) statesF
-    ) candidatePlans
-  where
-    rs = transitions m
-    statesF = statesSatisifyingBounded m f
-    candidatePlans = findPlans m
-
-\end{code}
-}
-
-
 
 \begin{code}
 data SEFlag = SEOk | SEBad
@@ -223,9 +167,9 @@ stepKHProductState rs a st =
                 map (stepBadComponent rs a) (badComponentsKH st)
             }
 
-khCompletePSpace :: AbilityMap -> [State] -> [State] -> Bool
-khCompletePSpace m phiStates psiStates =
-    dfs maxDepth initialState
+findWitnessPSpaceBySets :: AbilityMap -> [State] -> [State] -> Maybe Plan
+findWitnessPSpaceBySets m phiStates psiStates =
+    pathTo acceptingKHProductState next initialState
   where
     rs :: Relations
     rs =
@@ -247,56 +191,27 @@ khCompletePSpace m phiStates psiStates =
     initialState =
         initialKHProductState phiStates negPsiStates
 
-    n :: Int
-    n =
-        length allStates
-
-    maxDepth :: Int
-    maxDepth =
-        (2 ^ (3 * n)) * (n ^ (3 :: Int))
-
-    dfs :: Int -> KHProductState -> Bool
-    dfs depth current
-        | acceptingKHProductState current = True
-        | depth <= 0                      = False
-        | otherwise =
-            any
-                (\a -> dfs (depth - 1) (stepKHProductState rs a current))
-                acts
-
-findWitnessPSpaceBySets :: AbilityMap -> [State] -> [State] -> Maybe Plan
-findWitnessPSpaceBySets m phiStates psiStates =
-    pathTo acceptingKHProductState next initialState
-  where
-    rs :: Relations
-    rs = transitions m
-
-    acts :: [Action]
-    acts = actionsOf rs
-
-    allStates :: [State]
-    allStates = toList (states m)
-
-    negPsiStates :: [State]
-    negPsiStates =
-        [ s | s <- allStates, s `notElem` psiStates ]
-
-    initialState :: KHProductState
-    initialState =
-        initialKHProductState phiStates negPsiStates
-
     next :: KHProductState -> [(Action, KHProductState)]
     next current =
         [ (a, stepKHProductState rs a current)
         | a <- acts
         ]
 
+khHoldsByProductSearch :: AbilityMap -> [State] -> [State] -> Bool
+khHoldsByProductSearch m phiStates psiStates =
+    case findWitnessPSpaceBySets m phiStates psiStates of
+        Just _ ->
+            True
+        Nothing ->
+            False
+
 truthSet :: AbilityMap -> Form -> [State]
 truthSet m f =
     [ s | s <- toList (states m), isTrue (m, s) f ]
 
 isTrue :: (AbilityMap, State) -> Form -> Bool
-isTrue _ T = True
+isTrue _ T =
+    True
 isTrue (m, s) (P p) =
     p `elem` valuationAt (valuation m) s
 isTrue (m, s) (Neg f) =
@@ -304,13 +219,13 @@ isTrue (m, s) (Neg f) =
 isTrue (m, s) (Conj f g) =
     isTrue (m, s) f && isTrue (m, s) g
 isTrue (m, _) (KH f g) =
-    khCompletePSpace m phiStates psiStates
+    khHoldsByProductSearch m phiStates psiStates
   where
     phiStates =
-        [ s | s <- toList (states m), isTrue (m, s) f ]
+        truthSet m f
 
     psiStates =
-        [ s | s <- toList (states m), isTrue (m, s) g ]
+        truthSet m g
 
 -- Infix alias for the complete satisfaction relation
 (|=) :: (AbilityMap, State) -> Form -> Bool
@@ -320,9 +235,13 @@ findWitness :: AbilityMap -> Form -> Form -> Maybe Plan
 findWitness m f g =
     findWitnessPSpaceBySets m phiStates psiStates
   where
-    phiStates = truthSet m f
-    psiStates = truthSet m g
+    phiStates =
+        truthSet m f
+
+    psiStates =
+        truthSet m g
 \end{code}
+}
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
 Formulas may be created in \texttt{ghci} using \texttt{parseForm}. We omit most of the code here. The following inputs are accepted:
@@ -374,152 +293,10 @@ parseForm = parse (pForm <* eof) "input"
 evalForm :: (AbilityMap, State) -> String -> Bool
 evalForm (m, s) str =
     case parseForm str of
-        Right f -> isTrueBounded (m, s) f
-        Left _  -> error "Invalid formula"
+        Right f ->
+            isTrue (m, s) f
+        Left _ ->
+            error "Invalid formula"
 
 \end{code}
 
-\subsection{Random Generation for $\mathcal{L}_{Kh}$}
-
-\subsubsection{Model Generation with Parameters}\label{sec:LTSGen}
-To facilitate testing with models of specific sizes, we implement a function that generates an \textit{AbilityMap} from a fixed number of states, propositions, and actions. 
-We omit the code here.
-
-The generated model includes:
-\begin{itemize}
-    \item a finite set of states $\{1,\dots,n\}$,
-    \item a set of actions $\{1,\dots,k\}$,
-    \item a valuation assigning each state a random subset of propositions $\{1,\dots,m\}$,
-    \item a family of action-labelled transitions, each generated by randomly sampling pairs of states.
-\end{itemize}
-\hide{
-\begin{code}
--- Generate an LTS with a specific number of states, propositions, and actions.
--- n: number of states
--- m: number of propositions
--- k: number of actions
-generateLTS :: Int -> Int -> Int -> Gen AbilityMap
-generateLTS n m k = do
-    -- Ensure that the model has at least one state
-    let n' = max 1 n
-    let m' = max 0 m
-    let k' = max 0 k
-
-    let sts = [1 .. n']
-    let stateList = head sts :| tail sts
-
-    -- Available actions and propositions
-    let actions = [1 .. fromIntegral k']
-    let propRange = [1 .. m']
-
-    -- Generate one random relation for each action
-    rels <- mapM (\_ -> generateRandomRel sts) actions
-
-    -- Generate one random valuation for each state
-    vals <- mapM (generateRandomValuation propRange) sts
-
-    return $ LTS stateList (zip actions rels) vals
-
--- Generate a random binary relation on the given set of states.
--- The relation is represented as a list of pairs (u,v).
-generateRandomRel :: [State] -> Gen Rel
-generateRandomRel sts = do
-    -- Randomly decide how many edges to generate
-    numEdges <- choose (0, length sts * length sts)
-
-    -- Generate that many pairs of states
-    edges <- vectorOf numEdges $ do
-        u <- elements sts
-        v <- elements sts
-        return (u, v)
-
-    -- Remove duplicates so that the relation behaves like a set
-    return (nub edges)
-
--- Generate a random valuation for a state
--- by picking a random subset of the available propositions.
-generateRandomValuation :: [Proposition] -> State -> Gen (State, [Proposition])
-generateRandomValuation propRange s = do
-    props <- sublistOf propRange
-    return (s, props)
-\end{code}
-}
-It is possible to generate concrete models and test formulas interactively in \texttt{ghci}. For instance:
-
-\begin{verbatim}
-ghci> m <- generate (generateLTS 5 3 2)
-ghci> m
-LTS {states = 1 :| [2,3,4,5], 
-transitions = [(1,[(4,5),(4,2),(4,3),(5,1),(1,4),(2,2),
-(3,1),(4,4),(2,3)]), (2,[(4,3),(4,5),(2,5),(4,2),(5,4),(1,5)])], 
-valuation = [(1,[1,3]),(2,[2,3]),(3,[1,2,3]),(4,[2,3]),(5,[2])]}
-
--- Evaluate a formula at a state
-ghci> isTrue (m, 1) (KH (P 1) (P 2))
-True
-
--- Using the parser
-ghci> evalForm (m, 1) "KH p1 p2"
-True
-\end{verbatim}
-
-In the example above, \texttt{generateLTS 5 3 2} produces a random LTS with five states, three proposition letters, and two actions. The function \texttt{isTrue} can then be used to evaluate formulas directly, while \texttt{evalForm} allows testing formulas given as strings.
-
-\subsubsection{Arbitrary Instances for QuickCheck}
-Finally, for this section we define the instances of Arbitrary for \texttt{Form} and \texttt{Arbitrary} respectively. We omit the code here.
-
-\hide{
-\begin{code}
-instance Arbitrary Form where
-    arbitrary = sized randomForm where
-        -- Helper function to generate random formulas of a given size
-        randomForm :: Int -> Gen Form
-        randomForm 0 = oneof [P <$> choose (1, 5), return T]
-        randomForm n = oneof 
-            [ P <$> choose (1, 5)
-            , return T
-            , Neg <$> randomForm (n - 1)
-            , Conj <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
-            , KH <$> randomForm (n `div` 2) <*> randomForm (n `div` 2)
-            ]
-
-instance Arbitrary AbilityMap where
-    arbitrary = do
-        n <- choose (1,10)
-        let sts = [1..n] -- n states
-        rels <- generateRelations n sts
-        vals <- mapM generateValuation sts
-        return $ LTS (head sts :| tail sts) rels vals 
-        where
-            generateRelations n sts
-                | n == 1 = return []
-                | otherwise = do
-                    m <- choose (1,n) -- decide how many actions to generate
-                    actions <- vectorOf m (choose (1,5))
-                    mapM (generateRel sts) actions
-
-             -- for each action a, generate a relation labeled by a
-            generateRel sts a = do
-                x <- elements sts
-                y <- elements (delete x sts) -- avoid loops
-                return (a, [(x,y)])
-            
-            -- for each state s, generate a list of propositions
-            generateValuation s = do
-                props <- listOf (choose (1,5))
-                return (s, nub props)
-        
-\end{code}
-}
-It is possible to try out semantics by running \texttt{stack ghci}.
-For example:\\
-
-\begin{verbatim}
-ghci> generate (arbitrary:: Gen AbilityMap)
-LTS {states = 1 :| [2,3,4,5,6], ...
-ghci> m = LTS {states = 1 :| [2,3,4,5,6], ...
-ghci> isTrue (m, 2) (KH (P 4) (P 1))
-False
-ghci> evalForm (m, 2) "KH (p4 ^ !p2) p3"
-True
-\end{verbatim}

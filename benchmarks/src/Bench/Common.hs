@@ -21,18 +21,19 @@ data BenchMode = Quick | Full
   deriving (Eq, Show)
 
 data BenchOutcome = BenchOutcome
-  { outcomeResult                  :: Bool
-  , outcomeWitnessFound            :: Maybe Bool
-  , outcomeWitnessSize             :: Maybe Int
-  , outcomePurpose                 :: Maybe String
-  , outcomePrimaryParameter        :: Maybe String
-  , outcomeParameterValue          :: Maybe String
-  , outcomePreStates               :: Maybe Int
-  , outcomeGoalStates              :: Maybe Int
-  , outcomeOrdinaryReachable       :: Maybe Bool
+  { outcomeResult :: Bool
+  , outcomeWitnessFound :: Maybe Bool
+  , outcomeWitnessSize :: Maybe Int
+  , outcomeWitnessAgrees :: Maybe Bool
+  , outcomePurpose :: Maybe String
+  , outcomePrimaryParameter :: Maybe String
+  , outcomeParameterValue :: Maybe String
+  , outcomePreStates :: Maybe Int
+  , outcomeGoalStates :: Maybe Int
+  , outcomeOrdinaryReachable :: Maybe Bool
   , outcomeOrdinaryAllPreReachable :: Maybe Bool
-  , outcomeExpectedWitnessSize     :: Maybe Int
-  , outcomeWitnessSizePassed       :: Maybe Bool
+  , outcomeExpectedWitnessSize :: Maybe Int
+  , outcomeWitnessSizePassed :: Maybe Bool
   } deriving (Eq, Show)
 
 data BenchCase = BenchCase
@@ -73,6 +74,7 @@ boolOutcome value =
     { outcomeResult                  = value
     , outcomeWitnessFound            = Nothing
     , outcomeWitnessSize             = Nothing
+    , outcomeWitnessAgrees           = Nothing
     , outcomePurpose                 = Nothing
     , outcomePrimaryParameter        = Nothing
     , outcomeParameterValue          = Nothing
@@ -87,8 +89,9 @@ boolOutcome value =
 witnessOutcome :: Bool -> Maybe Int -> BenchOutcome
 witnessOutcome value witnessSize =
   (boolOutcome value)
-    { outcomeWitnessFound = Just value
-    , outcomeWitnessSize  = witnessSize
+    { outcomeWitnessFound  = Just value
+    , outcomeWitnessSize   = witnessSize
+    , outcomeWitnessAgrees = Nothing
     }
 
 modeName :: BenchMode -> String
@@ -168,6 +171,16 @@ forceTimedOutcome outcome = do
   _ <- evaluate (outcomeResult outcome)
   _ <- evaluate (outcomeWitnessFound outcome)
   _ <- evaluate (outcomeWitnessSize outcome)
+  _ <- evaluate (outcomeWitnessAgrees outcome)
+  _ <- evaluate (outcomePurpose outcome)
+  _ <- evaluate (outcomePrimaryParameter outcome)
+  _ <- evaluate (outcomeParameterValue outcome)
+  _ <- evaluate (outcomePreStates outcome)
+  _ <- evaluate (outcomeGoalStates outcome)
+  _ <- evaluate (outcomeOrdinaryReachable outcome)
+  _ <- evaluate (outcomeOrdinaryAllPreReachable outcome)
+  _ <- evaluate (outcomeExpectedWitnessSize outcome)
+  _ <- evaluate (outcomeWitnessSizePassed outcome)
   pure outcome
 
 picoToMs :: Integer -> Double
@@ -208,7 +221,7 @@ csvHeader = concat
   , "purpose,primary_parameter,parameter_value,"
   , "pre_states,goal_states,"
   , "ordinary_reachable,ordinary_all_pre_reachable,"
-  , "witness_found,witness_size,expected_witness_size,witness_size_passed,"
+  , "witness_found,witness_size,expected_witness_size,witness_size_passed,witness_agrees,"
   , "time_ms,min_time_ms,max_time_ms"
   ]
 
@@ -254,6 +267,7 @@ csvRow r = concat
   , showMaybeInt (outcomeWitnessSize outcome), ","
   , showMaybeInt (outcomeExpectedWitnessSize outcome), ","
   , showMaybeBool (outcomeWitnessSizePassed outcome), ","
+  , showMaybeBool (outcomeWitnessAgrees outcome), ","
 
   , printf "%.3f" (resultTimeMs r), ","
   , printf "%.3f" (resultMinTimeMs r), ","

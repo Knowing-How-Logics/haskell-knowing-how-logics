@@ -409,6 +409,7 @@ regOutcome purpose primaryParameter parameterValue expectedWitness model agent p
     { outcomeResult                  = result
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
+    , outcomeWitnessAgrees           = Nothing
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue

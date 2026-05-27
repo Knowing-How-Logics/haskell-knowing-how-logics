@@ -1,5 +1,5 @@
 logic,cases,passed,stable,expected_true,expected_false,avg_time_ms,max_time_ms,slowest,slowest_time_ms
-basic,49,49,49,27,22,0.7057346938775511,8.221,basic-multistart-all-good-w8,8.221
-budget,51,51,51,26,25,71.91672549019609,1385.036,budget-vector-line-positive-32,1385.036
-intermediate,52,52,52,26,26,0.6368076923076924,9.037,intermediate-multistart-all-good-w8,9.037
-regular,63,63,63,33,30,0.8201111111111111,6.221,regular-formula-depth-positive-128,6.221
+basic,51,51,51,28,23,1.276607843137255,16.043,basic-multistart-one-bad-w8,16.043
+budget,55,55,55,28,27,67.91203636363635,1418.352,budget-vector-line-positive-32,1418.352
+intermediate,56,56,56,28,28,0.6004464285714286,9.371,intermediate-multistart-all-good-w8,9.371
+regular,67,67,67,35,32,0.82544776119403,7.277,regular-formula-depth-positive-128,7.277

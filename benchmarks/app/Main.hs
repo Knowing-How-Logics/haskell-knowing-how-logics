@@ -113,14 +113,18 @@ usage :: String
 usage =
   unlines
     [ "Usage:"
-    , "  stack run khora-bench -- [--quick|--full] [--suite SUITE] [--out FILE]"
+    , "  stack exec khora-bench -- [--quick|--full] [--suite SUITE] [--out FILE]"
     , ""
     , "Examples:"
-    , "  stack run khora-bench -- --quick"
-    , "  stack run khora-bench -- --full"
-    , "  stack run khora-bench -- --full --suite basic"
-    , "  stack run khora-bench -- --full --suite regular"
-    , "  stack run khora-bench -- --full --suite regular --out benchmarks/results/raw/full.csv"
+    , "  stack exec khora-bench -- --quick"
+    , "  stack exec khora-bench -- --full"
+    , "  stack exec khora-bench -- --full --suite basic"
+    , "  stack exec khora-bench -- --full --suite regular"
+    , "  stack exec khora-bench -- --full --suite rescue-basic"
+    , "  stack exec khora-bench -- --full --suite rescue-regular"
+    , "  stack exec khora-bench -- --full --suite rescue-intermediate"
+    , "  stack exec khora-bench -- --full --suite rescue-budget"
+    , "  stack exec khora-bench -- --full --suite regular --out benchmarks/results/raw/regular-full.csv"
     , ""
     , "Available suites:"
     , "  all"
@@ -128,7 +132,8 @@ usage =
     , "  intermediate"
     , "  regular"
     , "  budget"
-    , "  or any family name, such as line-positive, awareness-negative, trap-reachable-negative"
+    , "  or any family name, such as line-positive, awareness-positive, trap-reachable-negative,"
+    , "  rescue-basic, rescue-regular, rescue-intermediate, rescue-budget"
     ]
 
 allBenchmarks :: BenchMode -> [BenchCase]

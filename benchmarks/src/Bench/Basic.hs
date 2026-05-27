@@ -344,9 +344,10 @@ mkBasicCase mode name family expected purpose primaryParameter parameterValue ex
 khOutcome :: String -> String -> String -> Maybe Int -> B.AbilityMap -> B.Form -> B.Form -> BenchOutcome
 khOutcome purpose primaryParameter parameterValue expectedWitness model pre goal =
   BenchOutcome
-    { outcomeResult                  = result
+    { outcomeResult                  = truthResult
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
+    , outcomeWitnessAgrees           = Just witnessAgrees
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue
@@ -364,6 +365,9 @@ khOutcome purpose primaryParameter parameterValue expectedWitness model pre goal
     goalStates =
       B.truthSet model goal
 
+    truthResult =
+      B.isTrue (model, NE.head (B.states model)) (B.KH pre goal)
+
     witness =
       B.findWitness model pre goal
 
@@ -375,12 +379,15 @@ khOutcome purpose primaryParameter parameterValue expectedWitness model pre goal
     witnessSize =
       fmap length witness
 
-    result =
+    witnessResult =
       case witness of
         Nothing ->
           False
         Just plan ->
           witnessSound model pre goal plan
+
+    witnessAgrees =
+      truthResult == witnessResult
 
 witnessSizePassed :: Maybe Int -> Maybe Int -> Maybe Bool
 witnessSizePassed Nothing _ =

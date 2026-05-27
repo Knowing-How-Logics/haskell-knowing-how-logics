@@ -103,7 +103,6 @@ import Automata
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
-import Test.QuickCheck
 import Text.Parsec hiding (State)
 import GraphSearch
 

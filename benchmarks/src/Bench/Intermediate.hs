@@ -375,6 +375,7 @@ iOutcome purpose primaryParameter parameterValue expectedWitness model pre mid g
     { outcomeResult                  = result
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
+    , outcomeWitnessAgrees           = Nothing
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue
