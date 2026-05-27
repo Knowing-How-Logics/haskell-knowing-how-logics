@@ -1,0 +1,15 @@
+name,logic,family,expected,result,passed,stable,ordinary_reachable,ordinary_all_pre_reachable,witness_found,witness_size,expected_witness_size,witness_size_passed,budget_dimension,time_ms
+basic-rescue-risky-branch-negative,basic,rescue-basic,False,False,True,True,True,True,False,NA,NA,NA,NA,0.011
+basic-rescue-safe-route-positive,basic,rescue-basic,True,True,True,True,True,True,True,3,3,True,NA,0.028
+budget-rescue-detour-over-budget-negative,budget,rescue-budget,False,False,True,True,True,True,False,NA,NA,NA,2,0.069
+budget-rescue-detour-within-budget-positive,budget,rescue-budget,True,True,True,True,True,True,True,5,5,True,2,0.135
+budget-rescue-oxygen-negative,budget,rescue-budget,False,False,True,True,True,True,False,NA,NA,NA,2,0.036
+budget-rescue-time-energy-positive,budget,rescue-budget,True,True,True,True,True,True,True,4,4,True,2,0.071
+intermediate-rescue-blocked-door-detour-positive,intermediate,rescue-intermediate,True,True,True,True,True,True,True,4,4,True,NA,0.052
+intermediate-rescue-risky-branch-negative,intermediate,rescue-intermediate,False,False,True,True,True,True,False,NA,NA,NA,NA,0.006
+intermediate-rescue-safe-route-positive,intermediate,rescue-intermediate,True,True,True,True,True,True,True,3,3,True,NA,0.013
+intermediate-rescue-smoke-route-negative,intermediate,rescue-intermediate,False,False,True,True,True,True,False,NA,NA,NA,NA,0.011
+regular-rescue-alternative-safe-routes-positive,regular,rescue-regular,True,True,True,True,True,True,True,5,5,True,NA,0.084
+regular-rescue-aware-route-positive,regular,rescue-regular,True,True,True,True,True,True,True,4,4,True,NA,0.031
+regular-rescue-confused-routes-negative,regular,rescue-regular,False,False,True,True,True,True,False,NA,NA,NA,NA,0.041
+regular-rescue-unaware-safe-route-negative,regular,rescue-regular,False,False,True,True,True,True,False,NA,NA,NA,NA,0.035
