@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-full-laziness #-}
 module Bench.Regular (regularBenchmarks) where
 
 import Data.List (nub)
@@ -90,6 +91,18 @@ manualBenchmarks mode =
       False "The environment has a good action, but the agent's available automata do not include it."
       "semantic-case" "unaware-good-action" Nothing
       manualUnawareGoodActionModel agentOne (R.Prop startProp) (R.Prop goalProp)
+  
+  
+  
+    , mkRegCase mode "regular-manual-trim-baseline-positive" "manual-trim-regression"
+      True "Trim regression baseline: the trim automaton accepts the good one-step plan."
+      "semantic-case" "trim-baseline" (Just 2)
+      manualTrimBaselineModel agentOne (R.Prop startProp) (R.Prop goalProp)
+
+  , mkRegCase mode "regular-manual-nontrim-garbage-branch-positive" "manual-trim-regression"
+      True "Trim regression: a reachable non-productive garbage branch must not change the accepted language."
+      "semantic-case" "nontrim-garbage-branch" (Just 2)
+      manualNonTrimGarbageBranchModel agentOne (R.Prop startProp) (R.Prop goalProp)
 
   , mkRegCase mode "regular-manual-agent-one-knows" "manual-agent-difference"
       True "In the same model, agent 1 has a good plan class."
@@ -189,7 +202,7 @@ automatonOnlySizePositiveBenchmarks :: BenchMode -> [BenchCase]
 automatonOnlySizePositiveBenchmarks mode =
   [ mkRegCase mode ("regular-automaton-only-size-positive-" ++ show q) "automaton-only-size-positive"
       True "Automaton-only sweep: the LTS is fixed while the automaton contains additional unreachable states."
-      "automaton_states" (show q') (Just q')
+      "automaton_states" (show q') (Just fixedAutomatonLtsSize)
       (automatonOnlyPositiveModel q') agentOne (R.Prop startProp) (R.Prop goalProp)
   | q <- automatonOnlySizes mode
   , let q' = max fixedAutomatonLtsSize q
@@ -245,7 +258,7 @@ regularLanguageWidthPositiveBenchmarks :: BenchMode -> [BenchCase]
 regularLanguageWidthPositiveBenchmarks mode =
   [ mkRegCase mode ("regular-language-width-positive-w" ++ show w) "regular-language-width-positive"
       True "Regular-language width sweep: one automaton accepts many length-d plans, and every accepted plan reaches the goal."
-      "branching_width" (show w) (Just (fixedLanguageDepth + 1))
+      "width" (show w) (Just (fixedLanguageDepth + 1))
       (regularLanguageBranchingPositiveModel fixedLanguageDepth w) agentOne (R.Prop startProp) (R.Prop goalProp)
   | w <- languageWidths mode
   ]
@@ -254,7 +267,7 @@ regularLanguageWidthNegativeBenchmarks :: BenchMode -> [BenchCase]
 regularLanguageWidthNegativeBenchmarks mode =
   [ mkRegCase mode ("regular-language-width-negative-w" ++ show w) "regular-language-width-negative"
       False "Regular-language width sweep: one automaton accepts many length-d plans, but one accepted action can enter a trap."
-      "branching_width" (show w) Nothing
+      "width" (show w) Nothing
       (regularLanguageBranchingNegativeModel fixedLanguageDepth w) agentOne (R.Prop startProp) (R.Prop goalProp)
   | w <- languageWidths mode
   ]
@@ -263,7 +276,7 @@ regularLanguageDepthPositiveBenchmarks :: BenchMode -> [BenchCase]
 regularLanguageDepthPositiveBenchmarks mode =
   [ mkRegCase mode ("regular-language-depth-positive-d" ++ show d) "regular-language-depth-positive"
       True "Regular-language depth sweep: branching width is fixed while accepted plan length increases."
-      "language_depth" (show d) (Just (d + 1))
+      "depth" (show d) (Just (d + 1))
       (regularLanguageBranchingPositiveModel d fixedLanguageWidth) agentOne (R.Prop startProp) (R.Prop goalProp)
   | d <- languageDepths mode
   ]
@@ -272,7 +285,7 @@ regularLanguageDepthNegativeBenchmarks :: BenchMode -> [BenchCase]
 regularLanguageDepthNegativeBenchmarks mode =
   [ mkRegCase mode ("regular-language-depth-negative-d" ++ show d) "regular-language-depth-negative"
       False "Regular-language depth sweep: branching width is fixed, but one accepted branch can enter a trap."
-      "language_depth" (show d) Nothing
+      "depth" (show d) Nothing
       (regularLanguageBranchingNegativeModel d fixedLanguageWidth) agentOne (R.Prop startProp) (R.Prop goalProp)
   | d <- languageDepths mode
   ]
@@ -386,21 +399,22 @@ mkRegCase ::
   -> BenchCase
 mkRegCase mode name family expected purpose primaryParameter parameterValue expectedWitness model agent pre goal =
   BenchCase
-    { caseName            = name
-    , caseLogic           = "regular"
-    , caseFamily          = family
-    , caseMode            = mode
-    , caseExpected        = Just expected
-    , caseStates          = length (R.statesM model)
-    , caseActions         = length (actionsOfReg model)
-    , caseTransitions     = transitionCount model
-    , casePropositions    = propositionCount model pre goal
-    , caseAgents          = Just (agentCount model)
-    , caseAutomata        = Just (automataCount model)
-    , caseAutomatonStates = Just (automatonStateCount model)
-    , caseBudgetDim       = Nothing
-    , caseFormulaSize     = regFormulaSize (R.KHI agent pre goal)
-    , caseRun             = pure (regOutcome purpose primaryParameter parameterValue expectedWitness model agent pre goal)
+    { caseName                 = name
+    , caseLogic                = "regular"
+    , caseFamily               = family
+    , caseMode                 = mode
+    , caseExpected             = Just expected
+    , caseStates               = length (R.statesM model)
+    , caseActions              = length (actionsOfReg model)
+    , caseTransitions          = transitionCount model
+    , casePropositions         = propositionCount model pre goal
+    , caseAgents               = Just (agentCount model)
+    , caseAutomata             = Just (automataCount model)
+    , caseAutomatonStates      = Just (automatonStateCount model)
+    , caseAutomatonTransitions = Just (automatonTransitionCount model)
+    , caseBudgetDim            = Nothing
+    , caseFormulaSize          = regFormulaSize (R.KHI agent pre goal)
+    , caseRun                  = pure (regOutcome purpose primaryParameter parameterValue expectedWitness model agent pre goal)
     }
 
 regOutcome :: String -> String -> String -> Maybe Int -> R.RegLTSU -> R.Agent -> R.RegForm -> R.RegForm -> BenchOutcome
@@ -561,6 +575,38 @@ manualUnawareGoodActionModel =
         ]
     , R.uncertainty = [(agentOne, [singleActionAutomaton badAction])]
     , R.valuationM = [(0, [startProp]), (1, [goalProp]), (2, [])]
+    }
+
+manualTrimBaselineModel :: R.RegLTSU
+manualTrimBaselineModel =
+  R.RegLTSU
+    { R.statesM = [0, 1]
+    , R.relationsM =
+        [ (goodAction, [(0, 1), (1, 1)])
+        ]
+    , R.uncertainty =
+        [ (agentOne, [singleActionAutomaton goodAction])
+        ]
+    , R.valuationM =
+        [ (0, [startProp])
+        , (1, [goalProp])
+        ]
+    }
+
+manualNonTrimGarbageBranchModel :: R.RegLTSU
+manualNonTrimGarbageBranchModel =
+  R.RegLTSU
+    { R.statesM = [0, 1]
+    , R.relationsM =
+        [ (goodAction, [(0, 1), (1, 1)])
+        ]
+    , R.uncertainty =
+        [ (agentOne, [nonTrimGarbageBranchAutomaton goodAction badAction])
+        ]
+    , R.valuationM =
+        [ (0, [startProp])
+        , (1, [goalProp])
+        ]
     }
 
 manualAgentDifferenceModel :: R.RegLTSU
@@ -1160,6 +1206,20 @@ singleActionAutomaton a =
     , autFinal = [1]
     }
 
+nonTrimGarbageBranchAutomaton :: Int -> Int -> Automaton
+nonTrimGarbageBranchAutomaton good garbage =
+  Automaton
+    { autStates = [0, 1, 2]
+    , autAlphabet = [good, garbage]
+    , autTransitions =
+        [ ((0, good), [1])
+        , ((0, garbage), [2])
+        , ((2, garbage), [2])
+        ]
+    , autInitial = [0]
+    , autFinal = [1]
+    }
+
 oneStepChoiceAutomaton :: [Int] -> Automaton
 oneStepChoiceAutomaton acts0 =
   Automaton
@@ -1289,6 +1349,7 @@ automatonStateCount :: R.RegLTSU -> Int
 automatonStateCount model =
   sum [length (autStates aut) | (_, auts) <- R.uncertainty model, aut <- auts]
 
+
 propositionCount :: R.RegLTSU -> R.RegForm -> R.RegForm -> Int
 propositionCount model pre goal =
   length . nub $
@@ -1327,3 +1388,8 @@ falseReg =
 props :: [(Bool, Int)] -> [Int]
 props xs =
   [p | (ok, p) <- xs, ok]
+
+
+automatonTransitionCount :: R.RegLTSU -> Int
+automatonTransitionCount model =
+  sum [length (autTransitions aut) | (_, auts) <- R.uncertainty model, aut <- auts]

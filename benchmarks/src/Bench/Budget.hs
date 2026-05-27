@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-full-laziness #-}
 module Bench.Budget (budgetBenchmarks) where
 
 import Data.List (nub)
@@ -103,6 +104,16 @@ caseStudyBenchmarks mode =
       "case-study" "expensive-only" Nothing
       3 deliveryExpensiveOnlyModel agentOne (B.BProp startProp) (B.BProp goalProp)
 
+    , mkBudgetCase mode "budget-manual-trim-baseline-positive" "manual-trim-regression"
+      True "Trim regression baseline: the trim automaton accepts the cheap one-step plan within budget."
+      "semantic-case" "trim-baseline" (Just 2)
+      1 manualBudgetTrimBaselineModel agentOne (B.BProp startProp) (B.BProp goalProp)
+
+  , mkBudgetCase mode "budget-manual-nontrim-garbage-branch-positive" "manual-trim-regression"
+      True "Trim regression: a reachable non-productive garbage branch must not change the accepted budget-feasible language."
+      "semantic-case" "nontrim-garbage-branch" (Just 2)
+      1 manualBudgetNonTrimGarbageBranchModel agentOne (B.BProp startProp) (B.BProp goalProp)
+
   , mkVectorCase mode "budget-robot-time-energy-positive" "robot-time-energy-positive"
       True "Robot case study: the route fits both time and energy budgets."
       "case-study" "time-energy-positive" (Just 4)
@@ -198,6 +209,7 @@ costPerStepNegativeBenchmarks mode =
   | c <- stepCosts mode
   ]
 
+
 classCountGoodLastBenchmarks :: BenchMode -> [BenchCase]
 classCountGoodLastBenchmarks mode =
   [ mkBudgetCase mode ("budget-class-count-good-last-" ++ show k) "class-count-good-last"
@@ -265,7 +277,7 @@ vectorTightnessBenchmarks mode =
   [ mkVectorCase mode ("budget-vector-tightness-b" ++ show b) "vector-tightness"
       (b >= fixedVectorTightCost)
       "Vector-budget tightness sweep: only the second resource bound varies."
-      "second_budget" (show b) (if b >= fixedVectorTightCost then Just fixedVectorTightWitnessSize else Nothing)
+      "budget" (show b) (if b >= fixedVectorTightCost then Just fixedVectorTightWitnessSize else Nothing)
       [fixedVectorTightCost, b]
       vectorTightnessModel
       agentOne (B.VBProp startProp) (B.VBProp goalProp)
@@ -378,21 +390,22 @@ mkBudgetCase ::
   -> BenchCase
 mkBudgetCase mode name family expected purpose primaryParameter parameterValue expectedWitness budget model agent pre goal =
   BenchCase
-    { caseName            = name
-    , caseLogic           = "budget"
-    , caseFamily          = family
-    , caseMode            = mode
-    , caseExpected        = Just expected
-    , caseStates          = length (B.statesBR model)
-    , caseActions         = length (actionsOfBR model)
-    , caseTransitions     = transitionCountBR model
-    , casePropositions    = propositionCountBR model pre goal
-    , caseAgents          = Just (agentCountBR model)
-    , caseAutomata        = Just (automataCountBR model)
-    , caseAutomatonStates = Just (automatonStateCountBR model)
-    , caseBudgetDim       = Just 1
-    , caseFormulaSize     = budgetFormulaSize (B.BKHI budget agent pre goal)
-    , caseRun             = pure (budgetOutcome purpose primaryParameter parameterValue expectedWitness budget model agent pre goal)
+    { caseName                 = name
+    , caseLogic                = "budget"
+    , caseFamily               = family
+    , caseMode                 = mode
+    , caseExpected             = Just expected
+    , caseStates               = length (B.statesBR model)
+    , caseActions              = length (actionsOfBR model)
+    , caseTransitions          = transitionCountBR model
+    , casePropositions         = propositionCountBR model pre goal
+    , caseAgents               = Just (agentCountBR model)
+    , caseAutomata             = Just (automataCountBR model)
+    , caseAutomatonStates      = Just (automatonStateCountBR model)
+    , caseAutomatonTransitions = Just (automatonTransitionCountBR model)
+    , caseBudgetDim            = Just 1
+    , caseFormulaSize          = budgetFormulaSize (B.BKHI budget agent pre goal)
+    , caseRun                  = pure (budgetOutcome purpose primaryParameter parameterValue expectedWitness budget model agent pre goal)
     }
 
 mkVectorCase ::
@@ -412,21 +425,22 @@ mkVectorCase ::
   -> BenchCase
 mkVectorCase mode name family expected purpose primaryParameter parameterValue expectedWitness budget model agent pre goal =
   BenchCase
-    { caseName            = name
-    , caseLogic           = "budget"
-    , caseFamily          = family
-    , caseMode            = mode
-    , caseExpected        = Just expected
-    , caseStates          = length (B.statesVBR model)
-    , caseActions         = length (actionsOfVBR model)
-    , caseTransitions     = transitionCountVBR model
-    , casePropositions    = propositionCountVBR model pre goal
-    , caseAgents          = Just (agentCountVBR model)
-    , caseAutomata        = Just (automataCountVBR model)
-    , caseAutomatonStates = Just (automatonStateCountVBR model)
-    , caseBudgetDim       = Just (length budget)
-    , caseFormulaSize     = vectorFormulaSize (B.VBKHI budget agent pre goal)
-    , caseRun             = pure (vectorOutcome purpose primaryParameter parameterValue expectedWitness budget model agent pre goal)
+    { caseName                 = name
+    , caseLogic                = "budget"
+    , caseFamily               = family
+    , caseMode                 = mode
+    , caseExpected             = Just expected
+    , caseStates               = length (B.statesVBR model)
+    , caseActions              = length (actionsOfVBR model)
+    , caseTransitions          = transitionCountVBR model
+    , casePropositions         = propositionCountVBR model pre goal
+    , caseAgents               = Just (agentCountVBR model)
+    , caseAutomata             = Just (automataCountVBR model)
+    , caseAutomatonStates      = Just (automatonStateCountVBR model)
+    , caseAutomatonTransitions = Just (automatonTransitionCountVBR model)
+    , caseBudgetDim            = Just (length budget)
+    , caseFormulaSize          = vectorFormulaSize (B.VBKHI budget agent pre goal)
+    , caseRun                  = pure (vectorOutcome purpose primaryParameter parameterValue expectedWitness budget model agent pre goal)
     }
 
 budgetOutcome :: String -> String -> String -> Maybe Int -> B.Budget -> B.BudgetRegLTSU -> Int -> B.BudgetRegForm -> B.BudgetRegForm -> BenchOutcome
@@ -435,7 +449,7 @@ budgetOutcome purpose primaryParameter parameterValue expectedWitness budget mod
     { outcomeResult                  = result
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
-    , outcomeWitnessAgrees           = Nothing
+    , outcomeWitnessAgrees           = Just witnessAgrees
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue
@@ -452,6 +466,9 @@ budgetOutcome purpose primaryParameter parameterValue expectedWitness budget mod
 
     goalStates =
       B.truthSetBR model goal
+
+    semanticResult =
+      B.isTrueBR (model, head (B.statesBR model)) (B.BKHI budget agent pre goal)
 
     witness =
       B.findWitnessAutomatonBR model budget agent pre goal
@@ -471,13 +488,16 @@ budgetOutcome purpose primaryParameter parameterValue expectedWitness budget mod
         Just aut ->
           budgetWitnessSound model budget aut pre goal
 
+    witnessAgrees =
+      semanticResult == result
+
 vectorOutcome :: String -> String -> String -> Maybe Int -> B.VectorBudget -> B.VectorBudgetRegLTSU -> Int -> B.VectorBudgetRegForm -> B.VectorBudgetRegForm -> BenchOutcome
 vectorOutcome purpose primaryParameter parameterValue expectedWitness budget model agent pre goal =
   BenchOutcome
     { outcomeResult                  = result
     , outcomeWitnessFound            = Just witnessFound
     , outcomeWitnessSize             = witnessSize
-    , outcomeWitnessAgrees           = Nothing
+    , outcomeWitnessAgrees           = Just witnessAgrees
     , outcomePurpose                 = Just purpose
     , outcomePrimaryParameter        = Just primaryParameter
     , outcomeParameterValue          = Just parameterValue
@@ -494,6 +514,9 @@ vectorOutcome purpose primaryParameter parameterValue expectedWitness budget mod
 
     goalStates =
       B.truthSetVBR model goal
+
+    semanticResult =
+      B.isTrueVBR (model, head (B.statesVBR model)) (B.VBKHI budget agent pre goal)
 
     witness =
       B.findWitnessAutomatonVBR model budget agent pre goal
@@ -512,6 +535,9 @@ vectorOutcome purpose primaryParameter parameterValue expectedWitness budget mod
           False
         Just aut ->
           vectorWitnessSound model budget aut pre goal
+
+    witnessAgrees =
+      semanticResult == result
 
 budgetWitnessSound :: B.BudgetRegLTSU -> B.Budget -> Automaton -> B.BudgetRegForm -> B.BudgetRegForm -> Bool
 budgetWitnessSound model budget aut pre goal =
@@ -641,6 +667,47 @@ manualVectorWithinBudgetModel =
 manualVectorSecondDimCostModel :: B.VectorBudgetRegLTSU
 manualVectorSecondDimCostModel =
   vectorLineModel 3 2 [1, 2] cheapAction
+
+
+manualBudgetTrimBaselineModel :: B.BudgetRegLTSU
+manualBudgetTrimBaselineModel =
+  B.BudgetRegLTSU
+    { B.statesBR = [0, 1]
+    , B.relationsBR =
+        [ (cheapAction, [(0, 1), (1, 1)])
+        ]
+    , B.uncertaintyBR =
+        [ (agentOne, [singleActionAutomaton cheapAction])
+        ]
+    , B.weightsBR =
+        [ ((0, cheapAction), -1)
+        , ((1, cheapAction), 0)
+        ]
+    , B.valuationBR =
+        [ (0, [startProp])
+        , (1, [goalProp])
+        ]
+    }
+
+manualBudgetNonTrimGarbageBranchModel :: B.BudgetRegLTSU
+manualBudgetNonTrimGarbageBranchModel =
+  B.BudgetRegLTSU
+    { B.statesBR = [0, 1]
+    , B.relationsBR =
+        [ (cheapAction, [(0, 1), (1, 1)])
+        ]
+    , B.uncertaintyBR =
+        [ (agentOne, [nonTrimGarbageBranchAutomaton cheapAction expensiveAction])
+        ]
+    , B.weightsBR =
+        [ ((0, cheapAction), -1)
+        , ((1, cheapAction), 0)
+        ]
+    , B.valuationBR =
+        [ (0, [startProp])
+        , (1, [goalProp])
+        ]
+    }
 
 deliveryCheapRouteModel :: B.BudgetRegLTSU
 deliveryCheapRouteModel =
@@ -947,6 +1014,20 @@ lineAutomaton n0 a =
     n =
       max 1 n0
 
+nonTrimGarbageBranchAutomaton :: Int -> Int -> Automaton
+nonTrimGarbageBranchAutomaton good garbage =
+  Automaton
+    { autStates = [0, 1, 2]
+    , autAlphabet = [good, garbage]
+    , autTransitions =
+        [ ((0, good), [1])
+        , ((0, garbage), [2])
+        , ((2, garbage), [2])
+        ]
+    , autInitial = [0]
+    , autFinal = [1]
+    }
+
 actionsOfBR :: B.BudgetRegLTSU -> [Int]
 actionsOfBR model =
   nub [a | (a, _) <- B.relationsBR model]
@@ -986,6 +1067,14 @@ automatonStateCountBR model =
 automatonStateCountVBR :: B.VectorBudgetRegLTSU -> Int
 automatonStateCountVBR model =
   sum [length (autStates aut) | (_, auts) <- B.uncertaintyVBR model, aut <- auts]
+
+automatonTransitionCountBR :: B.BudgetRegLTSU -> Int
+automatonTransitionCountBR model =
+  sum [length (autTransitions aut) | (_, auts) <- B.uncertaintyBR model, aut <- auts]
+
+automatonTransitionCountVBR :: B.VectorBudgetRegLTSU -> Int
+automatonTransitionCountVBR model =
+  sum [length (autTransitions aut) | (_, auts) <- B.uncertaintyVBR model, aut <- auts]
 
 propositionCountBR :: B.BudgetRegLTSU -> B.BudgetRegForm -> B.BudgetRegForm -> Int
 propositionCountBR model pre goal =

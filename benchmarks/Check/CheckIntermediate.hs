@@ -30,9 +30,12 @@ main = do
 
       checkAllPassed intermediateRows
       checkAllStable intermediateRows
+      checkWitnessAgreement intermediateRows
       checkPurposeFields intermediateRows
+      checkCoreMetricFields intermediateRows
       checkWitnessSizes intermediateRows
       checkRequiredFamilies intermediateRows
+      checkIntermediateScalingFamilies intermediateRows
       checkManualCases intermediateRows
       checkReachabilitySeparators intermediateRows
       checkIntermediateConstraintCases intermediateRows
@@ -43,8 +46,12 @@ main = do
       ok ("Checked " ++ show (length intermediateRows) ++ " Intermediate benchmark rows.")
       ok "All Intermediate benchmarks passed."
       ok "All Intermediate benchmark results were stable."
+      ok "Witness results agree with model-checking results."
+      ok "Purpose and parameter fields are present."
+      ok "Core metric fields are present and parseable."
       ok "Witness-size checks passed where an expected witness size is provided."
       ok "Required Intermediate benchmark families are present."
+      ok "Intermediate scaling families are present and have parameter metadata."
       ok "Intermediate reachability-separator and constraint checks passed."
       ok "Intermediate rescue case-study checks passed."
       ok "Intermediate benchmark CSV looks consistent."
@@ -67,6 +74,20 @@ checkAllStable rows = do
     then pure ()
     else failNow ("Some Intermediate benchmarks were not stable: " ++ intercalate ", " bad)
 
+checkWitnessAgreement :: [Row] -> IO ()
+checkWitnessAgreement rows = do
+  let bad =
+        names
+          [ r
+          | r <- rows
+          , isKnown (value r "witness_agrees")
+          , value r "witness_agrees" /= "True"
+          ]
+
+  if null bad
+    then pure ()
+    else failNow ("Some Intermediate witness results disagree with model-checking results: " ++ intercalate ", " bad)
+
 checkPurposeFields :: [Row] -> IO ()
 checkPurposeFields rows = do
   let bad =
@@ -81,6 +102,38 @@ checkPurposeFields rows = do
   if null bad
     then pure ()
     else failNow ("Some Intermediate rows are missing purpose/parameter fields: " ++ intercalate ", " bad)
+
+checkCoreMetricFields :: [Row] -> IO ()
+checkCoreMetricFields rows = do
+  let requiredIntFields =
+        [ "states"
+        , "actions"
+        , "transitions"
+        , "formula_size"
+        ]
+
+      badIntFields =
+        [ value r "name" ++ ":" ++ field
+        | r <- rows
+        , field <- requiredIntFields
+        , not (isNonNegativeInt (value r field))
+        ]
+
+      badTime =
+        names
+          [ r
+          | r <- rows
+          , not (isNonNegativeNumber (value r "time_ms"))
+          ]
+
+  if null badIntFields && null badTime
+    then pure ()
+    else failNow
+      ( "Some Intermediate rows have missing or non-numeric core metrics. Bad integer fields: "
+        ++ intercalate ", " badIntFields
+        ++ ". Bad time_ms rows: "
+        ++ intercalate ", " badTime
+      )
 
 checkWitnessSizes :: [Row] -> IO ()
 checkWitnessSizes rows = do
@@ -142,6 +195,72 @@ checkRequiredFamilies rows = do
   if null missing
     then pure ()
     else failNow ("Missing Intermediate benchmark families: " ++ intercalate ", " missing)
+
+checkIntermediateScalingFamilies :: [Row] -> IO ()
+checkIntermediateScalingFamilies rows = do
+  checkScalingRows "states"
+    [ "corridor-positive"
+    , "corridor-unsafe-middle"
+    , "corridor-broken"
+    ]
+
+  checkScalingRows "depth"
+    [ "branching-depth-safe"
+    , "branching-depth-unsafe"
+    ]
+
+  checkScalingRows "width"
+    [ "branching-width-safe"
+    , "branching-width-unsafe"
+    ]
+
+  checkScalingRows "actions"
+    [ "action-count-safe-last"
+    , "action-count-no-safe"
+    ]
+
+  checkScalingRows "path_length"
+    [ "path-length-safe-last"
+    , "path-length-unsafe"
+    ]
+
+  checkScalingRows "formula_depth"
+    [ "formula-depth-positive"
+    ]
+
+  where
+    checkScalingRows :: String -> [String] -> IO ()
+    checkScalingRows parameterName families = do
+      let scalingRows =
+            [ r
+            | r <- rows
+            , value r "family" `elem` families
+            ]
+
+          badParameter =
+            names
+              [ r
+              | r <- scalingRows
+              , value r "primary_parameter" /= parameterName
+                 || not (isKnown (value r "parameter_value"))
+              ]
+
+      if null scalingRows
+        then failNow
+          ( "No Intermediate scaling rows found for parameter="
+            ++ parameterName
+            ++ "."
+          )
+        else pure ()
+
+      if null badParameter
+        then pure ()
+        else failNow
+          ( "Some Intermediate scaling rows have wrong/missing parameter metadata for parameter="
+            ++ parameterName
+            ++ ": "
+            ++ intercalate ", " badParameter
+          )
 
 checkManualCases :: [Row] -> IO ()
 checkManualCases rows = do
@@ -210,6 +329,10 @@ checkReachabilitySeparators rows = do
           , value r "ordinary_reachable" /= "True"
           ]
 
+  if null checked
+    then failNow "No Intermediate reachability-separator rows were found."
+    else pure ()
+
   if null bad
     then pure ()
     else failNow
@@ -241,17 +364,26 @@ checkIntermediateConstraintCases rows = do
 
 checkMultiStartCases :: [Row] -> IO ()
 checkMultiStartCases rows = do
-  let bad =
+  let checked =
+        [ r
+        | r <- rows
+        , value r "family" == "multi-start-one-unsafe"
+        ]
+
+      bad =
         names
           [ r
-          | r <- rows
-          , value r "family" == "multi-start-one-unsafe"
+          | r <- checked
           , value r "expected" /= "False"
              || value r "result" /= "False"
              || value r "ordinary_reachable" /= "True"
              || value r "ordinary_all_pre_reachable" /= "True"
              || value r "witness_found" /= "False"
           ]
+
+  if null checked
+    then failNow "No Intermediate multi-start-one-unsafe rows were found."
+    else pure ()
 
   if null bad
     then pure ()
@@ -360,6 +492,18 @@ value row key =
 isKnown :: String -> Bool
 isKnown x =
   not (x == "" || x == "NA")
+
+isNonNegativeInt :: String -> Bool
+isNonNegativeInt x =
+  case reads x :: [(Int, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
+
+isNonNegativeNumber :: String -> Bool
+isNonNegativeNumber x =
+  case reads x :: [(Double, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
 
 ok :: String -> IO ()
 ok msg =

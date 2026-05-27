@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-full-laziness #-}
 module Bench.Intermediate (intermediateBenchmarks) where
 
 import Data.List (nub)
@@ -352,23 +353,24 @@ mkICase ::
   -> BenchCase
 mkICase mode name family expected purpose primaryParameter parameterValue expectedWitness model pre mid goal =
   BenchCase
-    { caseName            = name
-    , caseLogic           = "intermediate"
-    , caseFamily          = family
-    , caseMode            = mode
-    , caseExpected        = Just expected
-    , caseStates          = modelStateCount model
-    , caseActions         = modelActionCount model
-    , caseTransitions     = modelTransitionCount model
-    , casePropositions    = propositionCount model pre mid goal
-    , caseAgents          = Nothing
-    , caseAutomata        = Nothing
-    , caseAutomatonStates = Nothing
-    , caseBudgetDim       = Nothing
-    , caseFormulaSize     = iFormulaSize (I.Khm pre mid goal)
-    , caseRun             = pure (iOutcome purpose primaryParameter parameterValue expectedWitness model pre mid goal)
+    { caseName                 = name
+    , caseLogic                = "intermediate"
+    , caseFamily               = family
+    , caseMode                 = mode
+    , caseExpected             = Just expected
+    , caseStates               = modelStateCount model
+    , caseActions              = modelActionCount model
+    , caseTransitions          = modelTransitionCount model
+    , casePropositions         = propositionCount model pre mid goal
+    , caseAgents               = Nothing
+    , caseAutomata             = Nothing
+    , caseAutomatonStates      = Nothing
+    , caseAutomatonTransitions = Nothing
+    , caseBudgetDim            = Nothing
+    , caseFormulaSize          = iFormulaSize (I.Khm pre mid goal)
+    , caseRun                  = pure (iOutcome purpose primaryParameter parameterValue expectedWitness model pre mid goal)
     }
-
+    
 iOutcome :: String -> String -> String -> Maybe Int -> B.AbilityMap -> I.IForm -> I.IForm -> I.IForm -> BenchOutcome
 iOutcome purpose primaryParameter parameterValue expectedWitness model pre mid goal =
   BenchOutcome

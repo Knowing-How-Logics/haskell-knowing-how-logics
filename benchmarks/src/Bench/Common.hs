@@ -10,12 +10,16 @@ module Bench.Common
   , csvRow
   , modeName
   , defaultOutput
+  , freshSalt
+  , saltOutcome
   ) where
 
 import Control.Exception (evaluate)
+import Data.IORef (IORef, atomicModifyIORef', newIORef)
 import Data.List (sort)
-import Text.Printf (printf)
 import System.CPUTime (getCPUTime)
+import System.IO.Unsafe (unsafePerformIO)
+import Text.Printf (printf)
 
 data BenchMode = Quick | Full
   deriving (Eq, Show)
@@ -37,36 +41,67 @@ data BenchOutcome = BenchOutcome
   } deriving (Eq, Show)
 
 data BenchCase = BenchCase
-  { caseName            :: String
-  , caseLogic           :: String
-  , caseFamily          :: String
-  , caseMode            :: BenchMode
-  , caseExpected        :: Maybe Bool
-  , caseStates          :: Int
-  , caseActions         :: Int
-  , caseTransitions     :: Int
-  , casePropositions    :: Int
-  , caseAgents          :: Maybe Int
-  , caseAutomata        :: Maybe Int
-  , caseAutomatonStates :: Maybe Int
-  , caseBudgetDim       :: Maybe Int
-  , caseFormulaSize     :: Int
-  , caseRun             :: IO BenchOutcome
+  { caseName                 :: String
+  , caseLogic                :: String
+  , caseFamily               :: String
+  , caseMode                 :: BenchMode
+  , caseExpected             :: Maybe Bool
+  , caseStates               :: Int
+  , caseActions              :: Int
+  , caseTransitions          :: Int
+  , casePropositions         :: Int
+  , caseAgents               :: Maybe Int
+  , caseAutomata             :: Maybe Int
+  , caseAutomatonStates      :: Maybe Int
+  , caseAutomatonTransitions :: Maybe Int
+  , caseBudgetDim            :: Maybe Int
+  , caseFormulaSize          :: Int
+  , caseRun                  :: IO BenchOutcome
   }
 
 data BenchResult = BenchResult
-  { resultCase          :: BenchCase
-  , resultOutcome       :: BenchOutcome
-  , resultPassed        :: Maybe Bool
-  , resultStable        :: Bool
-  , resultSamples       :: Int
-  , resultTotalIters    :: Int
-  , resultMinIters      :: Int
-  , resultMaxIters      :: Int
-  , resultTimeMs        :: Double
-  , resultMinTimeMs     :: Double
-  , resultMaxTimeMs     :: Double
+  { resultCase       :: BenchCase
+  , resultOutcome    :: BenchOutcome
+  , resultPassed     :: Maybe Bool
+  , resultStable     :: Bool
+  , resultSamples    :: Int
+  , resultTotalIters :: Int
+  , resultMinIters   :: Int
+  , resultMaxIters   :: Int
+  , resultTimeMs     :: Double
+  , resultMinTimeMs  :: Double
+  , resultMaxTimeMs  :: Double
   }
+
+saltRef :: IORef Int
+saltRef = unsafePerformIO (newIORef 0)
+{-# NOINLINE saltRef #-}
+
+freshSalt :: IO Int
+freshSalt =
+  atomicModifyIORef' saltRef (\n -> let n' = n + 1 in (n', n'))
+{-# NOINLINE freshSalt #-}
+
+saltBool :: Int -> Bool -> Bool
+saltBool salt value
+  | salt == minBound = not value
+  | otherwise        = value
+{-# NOINLINE saltBool #-}
+
+saltMaybeBool :: Int -> Maybe Bool -> Maybe Bool
+saltMaybeBool _ Nothing = Nothing
+saltMaybeBool salt (Just value) = Just (saltBool salt value)
+{-# NOINLINE saltMaybeBool #-}
+
+saltOutcome :: Int -> BenchOutcome -> BenchOutcome
+saltOutcome salt outcome =
+  salt `seq` outcome
+    { outcomeResult            = saltBool salt (outcomeResult outcome)
+    , outcomeWitnessFound      = saltMaybeBool salt (outcomeWitnessFound outcome)
+    , outcomeWitnessAgrees     = saltMaybeBool salt (outcomeWitnessAgrees outcome)
+    , outcomeWitnessSizePassed = saltMaybeBool salt (outcomeWitnessSizePassed outcome)
+    }
+{-# NOINLINE saltOutcome #-}
 
 boolOutcome :: Bool -> BenchOutcome
 boolOutcome value =
@@ -103,32 +138,37 @@ defaultOutput mode =
   "benchmarks/results/raw/" ++ modeName mode ++ ".csv"
 
 samplesFor :: BenchMode -> Int
-samplesFor Quick = 3
-samplesFor Full  = 5
+samplesFor Quick = 7
+samplesFor Full  = 11
 
 targetMsFor :: BenchMode -> Double
-targetMsFor Quick = 5.0
-targetMsFor Full  = 25.0
+targetMsFor Quick = 50.0
+targetMsFor Full  = 250.0
 
 maxIterationsFor :: BenchMode -> Int
-maxIterationsFor Quick = 1000
-maxIterationsFor Full  = 10000
+maxIterationsFor Quick = 200000
+maxIterationsFor Full  = 1000000
+
+warmupItersFor :: BenchMode -> Int
+warmupItersFor Quick = 10
+warmupItersFor Full  = 25
 
 runOne :: BenchCase -> IO BenchResult
 runOne c = do
+  warmup c (warmupItersFor (caseMode c))
   measurements <- sequence
     [ runSample c
     | _ <- [1 .. samplesFor (caseMode c)]
     ]
 
-  let outcomes      = [o | (o, _, _) <- measurements]
-      perIterTimes  = [t | (_, t, _) <- measurements]
-      iterations    = [i | (_, _, i) <- measurements]
-      chosen        = last outcomes
-      value         = outcomeResult chosen
-      stable        = all (== chosen) outcomes
-      passed        = fmap (== value) (caseExpected c)
-      sortedTimes   = sort perIterTimes
+  let outcomes     = [o | (o, _, _) <- measurements]
+      perIterTimes = [t | (_, t, _) <- measurements]
+      iterations   = [i | (_, _, i) <- measurements]
+      chosen       = last outcomes
+      value        = outcomeResult chosen
+      stable       = all (== chosen) outcomes
+      passed       = fmap (== value) (caseExpected c)
+      sortedTimes  = sort perIterTimes
 
   pure BenchResult
     { resultCase       = c
@@ -144,44 +184,69 @@ runOne c = do
     , resultMaxTimeMs  = maximum sortedTimes
     }
 
+warmup :: BenchCase -> Int -> IO ()
+warmup _ 0 = pure ()
+warmup c n = do
+  outcome <- caseRun c >>= forceTimedOutcome
+  forceBenchOutcome outcome
+  warmup c (n - 1)
+
 runSample :: BenchCase -> IO (BenchOutcome, Double, Int)
 runSample c = do
   start <- getCPUTime
-  go start 0
+  go start 0 Nothing
   where
     mode = caseMode c
     targetMs = targetMsFor mode
     maxIters = maxIterationsFor mode
 
-    go :: Integer -> Int -> IO (BenchOutcome, Double, Int)
-    go start iter = do
+    go :: Integer -> Int -> Maybe BenchOutcome -> IO (BenchOutcome, Double, Int)
+    go start iter lastOutcome = do
       outcome <- caseRun c >>= forceTimedOutcome
+      forceBenchOutcome outcome
       now <- getCPUTime
       let iter' = iter + 1
           elapsedMs = picoToMs (now - start)
+          done = elapsedMs >= targetMs || iter' >= maxIters
 
-      if elapsedMs >= targetMs || iter' >= maxIters
+      if done
         then do
           let perIterMs = elapsedMs / fromIntegral iter'
           pure (outcome, perIterMs, iter')
-        else go start iter'
+        else go start iter' (Just outcome)
 
 forceTimedOutcome :: BenchOutcome -> IO BenchOutcome
 forceTimedOutcome outcome = do
-  _ <- evaluate (outcomeResult outcome)
-  _ <- evaluate (outcomeWitnessFound outcome)
-  _ <- evaluate (outcomeWitnessSize outcome)
-  _ <- evaluate (outcomeWitnessAgrees outcome)
-  _ <- evaluate (outcomePurpose outcome)
-  _ <- evaluate (outcomePrimaryParameter outcome)
-  _ <- evaluate (outcomeParameterValue outcome)
-  _ <- evaluate (outcomePreStates outcome)
-  _ <- evaluate (outcomeGoalStates outcome)
-  _ <- evaluate (outcomeOrdinaryReachable outcome)
-  _ <- evaluate (outcomeOrdinaryAllPreReachable outcome)
-  _ <- evaluate (outcomeExpectedWitnessSize outcome)
-  _ <- evaluate (outcomeWitnessSizePassed outcome)
+  forceBenchOutcome outcome
   pure outcome
+
+forceBenchOutcome :: BenchOutcome -> IO ()
+forceBenchOutcome outcome = do
+  _ <- evaluate (outcomeResult outcome)
+  forceMaybeBool (outcomeWitnessFound outcome)
+  forceMaybeInt (outcomeWitnessSize outcome)
+  forceMaybeBool (outcomeWitnessAgrees outcome)
+  forceMaybeString (outcomePurpose outcome)
+  forceMaybeString (outcomePrimaryParameter outcome)
+  forceMaybeString (outcomeParameterValue outcome)
+  forceMaybeInt (outcomePreStates outcome)
+  forceMaybeInt (outcomeGoalStates outcome)
+  forceMaybeBool (outcomeOrdinaryReachable outcome)
+  forceMaybeBool (outcomeOrdinaryAllPreReachable outcome)
+  forceMaybeInt (outcomeExpectedWitnessSize outcome)
+  forceMaybeBool (outcomeWitnessSizePassed outcome)
+
+forceMaybeBool :: Maybe Bool -> IO ()
+forceMaybeBool Nothing = pure ()
+forceMaybeBool (Just x) = evaluate x >> pure ()
+
+forceMaybeInt :: Maybe Int -> IO ()
+forceMaybeInt Nothing = pure ()
+forceMaybeInt (Just x) = evaluate x >> pure ()
+
+forceMaybeString :: Maybe String -> IO ()
+forceMaybeString Nothing = pure ()
+forceMaybeString (Just x) = evaluate (length x) >> pure ()
 
 picoToMs :: Integer -> Double
 picoToMs ps =
@@ -216,7 +281,7 @@ csvHeader = concat
   , "expected,result,passed,stable,"
   , "samples,total_iterations,min_iterations,max_iterations,"
   , "states,actions,transitions,propositions,"
-  , "agents,automata,automaton_states,budget_dimension,"
+  , "agents,automata,automaton_states,automaton_transitions,budget_dimension,"
   , "formula_size,"
   , "purpose,primary_parameter,parameter_value,"
   , "pre_states,goal_states,"
@@ -250,6 +315,7 @@ csvRow r = concat
   , showMaybeInt (caseAgents c), ","
   , showMaybeInt (caseAutomata c), ","
   , showMaybeInt (caseAutomatonStates c), ","
+  , showMaybeInt (caseAutomatonTransitions c), ","
   , showMaybeInt (caseBudgetDim c), ","
 
   , show (caseFormulaSize c), ","
@@ -269,9 +335,9 @@ csvRow r = concat
   , showMaybeBool (outcomeWitnessSizePassed outcome), ","
   , showMaybeBool (outcomeWitnessAgrees outcome), ","
 
-  , printf "%.3f" (resultTimeMs r), ","
-  , printf "%.3f" (resultMinTimeMs r), ","
-  , printf "%.3f" (resultMaxTimeMs r)
+  , printf "%.6f" (resultTimeMs r), ","
+  , printf "%.6f" (resultMinTimeMs r), ","
+  , printf "%.6f" (resultMaxTimeMs r)
   ]
   where
     c = resultCase r

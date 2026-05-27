@@ -30,9 +30,12 @@ main = do
 
       checkAllPassed budgetRows
       checkAllStable budgetRows
+      checkWitnessAgreement budgetRows
       checkPurposeFields budgetRows
+      checkCoreMetricFields budgetRows
       checkWitnessSizes budgetRows
       checkRequiredFamilies budgetRows
+      checkBudgetScalingFamilies budgetRows
       checkManualCases budgetRows
       checkReachabilitySeparators budgetRows
       checkBudgetNegativeCases budgetRows
@@ -43,8 +46,12 @@ main = do
       ok ("Checked " ++ show (length budgetRows) ++ " Budget benchmark rows.")
       ok "All Budget benchmarks passed."
       ok "All Budget benchmark results were stable."
+      ok "Witness results agree with model-checking results."
+      ok "Purpose and parameter fields are present."
+      ok "Core metric fields are present and parseable."
       ok "Witness-size checks passed where an expected witness size is provided."
       ok "Required Budget benchmark families are present."
+      ok "Budget scaling families are present and have parameter metadata."
       ok "Budget and vector-budget negative cases passed."
       ok "Budget rescue case-study checks passed."
       ok "Budget benchmark CSV looks consistent."
@@ -67,6 +74,20 @@ checkAllStable rows = do
     then pure ()
     else failNow ("Some Budget benchmarks were not stable: " ++ intercalate ", " bad)
 
+checkWitnessAgreement :: [Row] -> IO ()
+checkWitnessAgreement rows = do
+  let bad =
+        names
+          [ r
+          | r <- rows
+          , isKnown (value r "witness_agrees")
+          , value r "witness_agrees" /= "True"
+          ]
+
+  if null bad
+    then pure ()
+    else failNow ("Some Budget witness results disagree with model-checking results: " ++ intercalate ", " bad)
+
 checkPurposeFields :: [Row] -> IO ()
 checkPurposeFields rows = do
   let bad =
@@ -81,6 +102,38 @@ checkPurposeFields rows = do
   if null bad
     then pure ()
     else failNow ("Some Budget rows are missing purpose/parameter fields: " ++ intercalate ", " bad)
+
+checkCoreMetricFields :: [Row] -> IO ()
+checkCoreMetricFields rows = do
+  let requiredIntFields =
+        [ "states"
+        , "actions"
+        , "transitions"
+        , "formula_size"
+        ]
+
+      badIntFields =
+        [ value r "name" ++ ":" ++ field
+        | r <- rows
+        , field <- requiredIntFields
+        , not (isNonNegativeInt (value r field))
+        ]
+
+      badTime =
+        names
+          [ r
+          | r <- rows
+          , not (isNonNegativeNumber (value r "time_ms"))
+          ]
+
+  if null badIntFields && null badTime
+    then pure ()
+    else failNow
+      ( "Some Budget rows have missing or non-numeric core metrics. Bad integer fields: "
+        ++ intercalate ", " badIntFields
+        ++ ". Bad time_ms rows: "
+        ++ intercalate ", " badTime
+      )
 
 checkWitnessSizes :: [Row] -> IO ()
 checkWitnessSizes rows = do
@@ -141,6 +194,73 @@ checkRequiredFamilies rows = do
   if null missing
     then pure ()
     else failNow ("Missing Budget benchmark families: " ++ intercalate ", " missing)
+
+checkBudgetScalingFamilies :: [Row] -> IO ()
+checkBudgetScalingFamilies rows = do
+  checkScalingRows "states"
+    [ "line-positive"
+    , "line-over-budget"
+    , "vector-line-positive"
+    , "vector-line-over-budget"
+    ]
+
+  checkScalingRows "budget"
+    [ "threshold"
+    , "vector-tightness"
+    ]
+
+  checkScalingRows "cost_per_step"
+    [ "cost-per-step-positive"
+    , "cost-per-step-negative"
+    ]
+
+  checkScalingRows "automata"
+    [ "class-count-good-last"
+    , "class-count-no-good"
+    ]
+
+  checkScalingRows "budget_dimension"
+    [ "vector-dimension-positive"
+    , "vector-dimension-negative"
+    ]
+
+  checkScalingRows "formula_depth"
+    [ "formula-depth-positive"
+    ]
+
+  where
+    checkScalingRows :: String -> [String] -> IO ()
+    checkScalingRows parameterName families = do
+      let scalingRows =
+            [ r
+            | r <- rows
+            , value r "family" `elem` families
+            ]
+
+          badParameter =
+            names
+              [ r
+              | r <- scalingRows
+              , value r "primary_parameter" /= parameterName
+                 || not (isKnown (value r "parameter_value"))
+              ]
+
+      if null scalingRows
+        then failNow
+          ( "No Budget scaling rows found for parameter="
+            ++ parameterName
+            ++ "."
+          )
+        else pure ()
+
+      if null badParameter
+        then pure ()
+        else failNow
+          ( "Some Budget scaling rows have wrong/missing parameter metadata for parameter="
+            ++ parameterName
+            ++ ": "
+            ++ intercalate ", " badParameter
+          )
 
 checkManualCases :: [Row] -> IO ()
 checkManualCases rows = do
@@ -207,6 +327,10 @@ checkReachabilitySeparators rows = do
           | r <- checked
           , value r "ordinary_reachable" /= "True"
           ]
+
+  if null checked
+    then failNow "No Budget reachability-separator rows were found."
+    else pure ()
 
   if null bad
     then pure ()
@@ -284,7 +408,6 @@ checkVectorCases rows = do
     then pure ()
     else failNow ("Some vector-budget negative rows failed: " ++ intercalate ", " badNegative)
 
-
 checkRescueCases :: [Row] -> IO ()
 checkRescueCases rows = do
   let required =
@@ -312,9 +435,9 @@ checkRescueCases rows = do
         names
           [ r
           | r <- rows
-          , (value r "name", value r "witness_size") `elem`
-              [ ("budget-rescue-time-energy-positive", "4")
-              , ("budget-rescue-detour-within-budget-positive", "5")
+          , value r "name" `elem`
+              [ "budget-rescue-time-energy-positive"
+              , "budget-rescue-detour-within-budget-positive"
               ]
           , value r "witness_found" /= "True"
              || value r "witness_size_passed" /= "True"
@@ -407,6 +530,18 @@ value row key =
 isKnown :: String -> Bool
 isKnown x =
   not (x == "" || x == "NA")
+
+isNonNegativeInt :: String -> Bool
+isNonNegativeInt x =
+  case reads x :: [(Int, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
+
+isNonNegativeNumber :: String -> Bool
+isNonNegativeNumber x =
+  case reads x :: [(Double, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
 
 ok :: String -> IO ()
 ok msg =

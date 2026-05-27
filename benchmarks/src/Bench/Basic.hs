@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-full-laziness #-}
 module Bench.Basic (basicBenchmarks) where
 
 import Data.List (nub)
@@ -100,7 +101,7 @@ caseStudyBenchmarks mode =
       True "Robot corridor case study: the same safe plan works from multiple possible starting states."
       "case-study" "multi-start" (Just 2)
       robotMultiStartModel (B.P startProp) (B.P goalProp)
-      
+
   , mkBasicCase mode "basic-rescue-safe-route-positive" "rescue-basic"
       True "Autonomous rescue case study: the robot has a reliable plan to enter the building, locate the survivor, and complete the evacuation."
       "case-study" "safe-rescue-route" (Just 3)
@@ -110,6 +111,16 @@ caseStudyBenchmarks mode =
       False "Autonomous rescue case study: the survivor is reachable, but the only available risky move can also lead to a smoke or collapse trap."
       "case-study" "risky-rescue-branch" Nothing
       rescueBasicRiskyModel (B.P startProp) (B.P goalProp)
+
+  , mkBasicCase mode "basic-rescue-multistart-positive" "rescue-basic"
+      True "Autonomous rescue case study: the same reliable rescue route works from multiple possible starting states."
+      "case-study" "multi-start-rescue-route" (Just 3)
+      rescueBasicMultiStartModel (B.P startProp) (B.P goalProp)
+
+  , mkBasicCase mode "basic-rescue-dead-end-negative" "rescue-basic"
+      False "Autonomous rescue case study: the survivor is reachable, but the rescue route may also lead to a non-goal dead-end area."
+      "case-study" "dead-end-rescue-route" Nothing
+      rescueBasicDeadEndModel (B.P startProp) (B.P goalProp)
   ]
 
 generatedBenchmarks :: BenchMode -> [BenchCase]
@@ -337,8 +348,11 @@ mkBasicCase mode name family expected purpose primaryParameter parameterValue ex
     , caseAutomata        = Nothing
     , caseAutomatonStates = Nothing
     , caseBudgetDim       = Nothing
+    , caseAutomatonTransitions = Nothing
     , caseFormulaSize     = khFormulaSize pre goal
-    , caseRun             = pure (khOutcome purpose primaryParameter parameterValue expectedWitness model pre goal)
+    , caseRun             = do
+        salt <- freshSalt
+        pure (saltOutcome salt (khOutcome purpose primaryParameter parameterValue expectedWitness model pre goal))
     }
 
 khOutcome :: String -> String -> String -> Maybe Int -> B.AbilityMap -> B.Form -> B.Form -> BenchOutcome
@@ -626,6 +640,81 @@ rescueBasicRiskyModel =
     , (2, [])
     , (3, [goalProp])
     , (4, [])
+    ]
+
+rescueBasicMultiStartModel :: B.AbilityMap
+rescueBasicMultiStartModel =
+  mkModel
+    [0, 1, 2, 3, 4, 5]
+    [ (rescueEnterAction,
+        [ (0, 2)
+        , (1, 2)
+        , (2, 2)
+        , (3, 3)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueLocateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 3)
+        , (3, 3)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueEvacuateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 2)
+        , (3, 4)
+        , (4, 4)
+        , (5, 5)
+        ])
+    , (rescueRiskyAction,
+        [ (0, 5)
+        , (1, 5)
+        , (2, 5)
+        , (3, 5)
+        , (4, 4)
+        , (5, 5)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [startProp])
+    , (2, [])
+    , (3, [])
+    , (4, [goalProp])
+    , (5, [])
+    ]
+
+rescueBasicDeadEndModel :: B.AbilityMap
+rescueBasicDeadEndModel =
+  mkModel
+    [0, 1, 2, 3]
+    [ (rescueEnterAction,
+        [ (0, 1)
+        , (1, 1)
+        , (2, 2)
+        , (3, 3)
+        ])
+    , (rescueLocateAction,
+        [ (0, 0)
+        , (1, 2)
+        , (1, 3)
+        , (2, 2)
+        , (3, 3)
+        ])
+    , (rescueEvacuateAction,
+        [ (0, 0)
+        , (1, 1)
+        , (2, 2)
+        , (3, 3)
+        ])
+    ]
+    [ (0, [startProp])
+    , (1, [])
+    , (2, [])
+    , (3, [goalProp])
     ]
 
 linePositiveModel :: Int -> B.AbilityMap

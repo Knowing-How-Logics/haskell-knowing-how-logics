@@ -116,4 +116,44 @@ pairwiseDisjointAutomata auts =
         , (j, aut2) <- zip [0 :: Int ..] auts
         , i < j
         ]
+
+-- A state is productive (co-accessible) iff it can reach some accepting
+-- state in the automaton. Final states are productive vacuously.
+isProductiveState :: Automaton -> AState -> Bool
+isProductiveState aut q =
+    existsReachable (`elem` autFinal aut) next q
+  where
+    next current =
+        nub [ q'
+            | a <- autAlphabet aut
+            , q' <- successorsA aut current a
+            ]
+
+-- Whether every declared state of the automaton is productive.
+allStatesProductive :: Automaton -> Bool
+allStatesProductive aut =
+    all (isProductiveState aut) (autStates aut)
+
+-- Remove all non-productive ("dead") states and any transitions touching
+-- them, keeping the recognised language L(A) unchanged. Accepted words
+-- never visit non-productive states, so only useless detours are dropped.
+-- An accepted word in trim(A) corresponds to an accepted word in A and
+-- vice versa, and every state in trim(A) is productive by construction.
+-- After trim, autInitial may become empty; this corresponds exactly to
+-- L(A) = empty.
+trimAutomaton :: Automaton -> Automaton
+trimAutomaton aut =
+    Automaton
+      { autStates      = good
+      , autAlphabet    = autAlphabet aut
+      , autTransitions =
+          [ ((q, a), [ q' | q' <- qs, q' `elem` good ])
+          | ((q, a), qs) <- autTransitions aut
+          , q `elem` good
+          ]
+      , autInitial     = [ q | q <- autInitial aut, q `elem` good ]
+      , autFinal       = [ q | q <- autFinal aut,   q `elem` good ]
+      }
+  where
+    good = [ q | q <- autStates aut, isProductiveState aut q ]
 \end{code}

@@ -222,42 +222,6 @@ data RegLTSU = RegLTSU
 getAgentAuts :: RegLTSU -> Agent -> [Automaton]
 getAgentAuts m agent =
     fromMaybe [] (lookup agent (uncertainty m))
-
-productiveStates :: Automaton -> [AState]
-productiveStates aut =
-    [ q
-    | q <- autStates aut
-    , existsReachable (`elem` autFinal aut) next q
-    ]
-  where
-    next :: AState -> [AState]
-    next q =
-        nub
-            [ q'
-            | a <- autAlphabet aut
-            , q' <- successorsA aut q a
-            ]
-
-trimAutomaton :: Automaton -> Automaton
-trimAutomaton aut =
-    Automaton
-        { autStates =
-            productive
-        , autAlphabet =
-            autAlphabet aut
-        , autTransitions =
-            [ ((q, a), filter (`elem` productive) qs)
-            | ((q, a), qs) <- autTransitions aut
-            , q `elem` productive
-            ]
-        , autInitial =
-            filter (`elem` productive) (autInitial aut)
-        , autFinal =
-            filter (`elem` productive) (autFinal aut)
-        }
-  where
-    productive =
-        productiveStates aut
 \end{code}
 
 \subsection{Model checker in Haskell}
@@ -489,7 +453,7 @@ isTrueReg (m, _) (KHI agent phi psi) =
 
 findWitnessAutomaton :: RegLTSU -> Agent -> RegForm -> RegForm -> Maybe Automaton
 findWitnessAutomaton m agent phi psi =
-    firstGood (getAgentAuts m agent)
+    firstGood (map trimAutomaton (getAgentAuts m agent))
   where
     phiStates =
         truthSet m phi
@@ -497,8 +461,17 @@ findWitnessAutomaton m agent phi psi =
     negPsiStates =
         truthSet m (Not psi)
 
+    -- checkSE (used by checkCond1) is sound only when every location of
+    -- the candidate automaton is productive: a "bad" vertex (q,t) is
+    -- supposed to witness that some plan in L(A) gets stuck, but this only
+    -- holds if the successor of the bad action can be extended to an
+    -- accepted word. We pre-trim the candidate so all remaining locations
+    -- are productive; trimming preserves L(A). If trimming removes every
+    -- initial state then L(A) = empty, and such a degenerate "witness" is
+    -- not considered a valid one.
     isGoodAutomaton aut =
-        checkCond1 m aut phiStates
+        not (null (autInitial aut))
+        && checkCond1 m aut phiStates
         && checkCond2 m aut phiStates negPsiStates
 
     firstGood [] =

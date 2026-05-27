@@ -28,13 +28,16 @@ main = do
 
       checkAllPassed rows
       checkAllStable rows
+      checkWitnessAgreement rows
       checkPurposeFields rows
+      checkCoreMetricFields rows
       checkWitnessSizes rows
 
       checkRequiredBasicFamilies rows
       checkRequiredRegularFamilies rows
       checkRequiredIntermediateFamilies rows
       checkRequiredBudgetFamilies rows
+      checkScalingFamilies rows
 
       checkReachabilitySeparators rows
       checkVectorBudgetRows rows
@@ -43,9 +46,12 @@ main = do
       ok ("Checked " ++ show (length rows) ++ " benchmark rows.")
       ok "All benchmark rows passed."
       ok "All benchmark rows were stable."
+      ok "Witness results agree with model-checking results."
       ok "Purpose and parameter fields are present."
+      ok "Core metric fields are present and parseable."
       ok "Witness-size checks passed where expected witness sizes are provided."
       ok "All required benchmark families are present."
+      ok "Scaling benchmark families are present."
       ok "Reachability-separator checks passed."
       ok "Vector-budget rows record budget dimensions."
       ok "Autonomous rescue running-example rows are present and semantically consistent."
@@ -78,6 +84,20 @@ checkAllStable rows = do
     then pure ()
     else failNow ("Some benchmarks were not stable: " ++ intercalate ", " bad)
 
+checkWitnessAgreement :: [Row] -> IO ()
+checkWitnessAgreement rows = do
+  let bad =
+        names
+          [ r
+          | r <- rows
+          , isKnown (value r "witness_agrees")
+          , value r "witness_agrees" /= "True"
+          ]
+
+  if null bad
+    then pure ()
+    else failNow ("Some witness results disagree with model-checking results: " ++ intercalate ", " bad)
+
 checkPurposeFields :: [Row] -> IO ()
 checkPurposeFields rows = do
   let bad =
@@ -92,6 +112,38 @@ checkPurposeFields rows = do
   if null bad
     then pure ()
     else failNow ("Some rows are missing purpose/parameter fields: " ++ intercalate ", " bad)
+
+checkCoreMetricFields :: [Row] -> IO ()
+checkCoreMetricFields rows = do
+  let requiredNumericFields =
+        [ "states"
+        , "actions"
+        , "transitions"
+        , "formula_size"
+        ]
+
+      badMissing =
+        [ value r "name" ++ ":" ++ field
+        | r <- rows
+        , field <- requiredNumericFields
+        , not (isNonNegativeInt (value r field))
+        ]
+
+      badTime =
+        names
+          [ r
+          | r <- rows
+          , not (isNonNegativeNumber (value r "time_ms"))
+          ]
+
+  if null badMissing && null badTime
+    then pure ()
+    else failNow
+      ( "Some rows have missing or non-numeric core metrics. Bad integer fields: "
+        ++ intercalate ", " badMissing
+        ++ ". Bad time_ms rows: "
+        ++ intercalate ", " badTime
+      )
 
 checkWitnessSizes :: [Row] -> IO ()
 checkWitnessSizes rows = do
@@ -258,6 +310,100 @@ checkRequiredFamilies rows logicName requiredFamilies = do
         ++ ": "
         ++ intercalate ", " missing
       )
+
+checkScalingFamilies :: [Row] -> IO ()
+checkScalingFamilies rows = do
+  checkScalingRows "basic" "states"
+    [ "line-positive"
+    , "line-broken-negative"
+    , "trap-reachable-negative"
+    ]
+
+  checkScalingRows "basic" "depth"
+    [ "branching-depth-safe-positive"
+    , "branching-depth-trap-negative"
+    ]
+
+  checkScalingRows "basic" "width"
+    [ "branching-width-safe-positive"
+    , "branching-width-trap-negative"
+    ]
+
+  checkScalingRows "regular" "automaton_states"
+    [ "automaton-only-size-positive"
+    , "automaton-only-size-negative"
+    ]
+
+  checkScalingRows "regular" "depth"
+    [ "regular-language-depth-positive"
+    , "regular-language-depth-negative"
+    ]
+
+  checkScalingRows "regular" "width"
+    [ "regular-language-width-positive"
+    , "regular-language-width-negative"
+    ]
+
+  checkScalingRows "intermediate" "depth"
+    [ "branching-depth-safe"
+    , "branching-depth-unsafe"
+    ]
+
+  checkScalingRows "intermediate" "width"
+    [ "branching-width-safe"
+    , "branching-width-unsafe"
+    ]
+
+  checkScalingRows "budget" "states"
+    [ "line-positive"
+    , "line-over-budget"
+    , "vector-line-positive"
+    , "vector-line-over-budget"
+    ]
+
+  checkScalingRows "budget" "budget_dimension"
+    [ "vector-dimension-positive"
+    , "vector-dimension-negative"
+    ]
+
+  where
+    checkScalingRows :: String -> String -> [String] -> IO ()
+    checkScalingRows logicName parameterName families = do
+      let scalingRows =
+            [ r
+            | r <- rows
+            , value r "logic" == logicName
+            , value r "family" `elem` families
+            ]
+
+          badParameter =
+            names
+              [ r
+              | r <- scalingRows
+              , value r "primary_parameter" /= parameterName
+                 || not (isKnown (value r "parameter_value"))
+              ]
+
+      if null scalingRows
+        then failNow
+          ( "No scaling rows found for logic="
+            ++ logicName
+            ++ ", parameter="
+            ++ parameterName
+            ++ "."
+          )
+        else pure ()
+
+      if null badParameter
+        then pure ()
+        else failNow
+          ( "Some scaling rows have wrong/missing parameter metadata for logic="
+            ++ logicName
+            ++ ", parameter="
+            ++ parameterName
+            ++ ": "
+            ++ intercalate ", " badParameter
+          )
 
 checkReachabilitySeparators :: [Row] -> IO ()
 checkReachabilitySeparators rows = do
@@ -435,6 +581,18 @@ isKnown :: String -> Bool
 isKnown x =
   not (x == "" || x == "NA")
 
+isNonNegativeInt :: String -> Bool
+isNonNegativeInt x =
+  case reads x :: [(Int, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
+
+isNonNegativeNumber :: String -> Bool
+isNonNegativeNumber x =
+  case reads x :: [(Double, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
+
 ok :: String -> IO ()
 ok msg =
   putStrLn ("[OK] " ++ msg)
@@ -504,17 +662,3 @@ parseLine input =
 
         x : xs ->
           go fields (x : field) inQuotes xs
-
-checkWitnessAgreement :: [Row] -> IO ()
-checkWitnessAgreement rows = do
-  let bad =
-        names
-          [ r
-          | r <- rows
-          , isKnown (value r "witness_agrees")
-          , value r "witness_agrees" /= "True"
-          ]
-
-  if null bad
-    then pure ()
-    else failNow ("Some witness results disagree with model-checking results: " ++ intercalate ", " bad)

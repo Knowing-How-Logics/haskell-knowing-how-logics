@@ -30,9 +30,12 @@ main = do
 
       checkAllPassed regularRows
       checkAllStable regularRows
+      checkWitnessAgreement regularRows
       checkPurposeFields regularRows
+      checkCoreMetricFields regularRows
       checkWitnessSizes regularRows
       checkRequiredFamilies regularRows
+      checkRegularScalingFamilies regularRows
       checkManualCases regularRows
       checkReachabilitySeparators regularRows
       checkRescueCases regularRows
@@ -46,8 +49,12 @@ main = do
       ok ("Checked " ++ show (length regularRows) ++ " Regular benchmark rows.")
       ok "All Regular benchmarks passed."
       ok "All Regular benchmark results were stable."
+      ok "Witness results agree with model-checking results."
+      ok "Purpose and parameter fields are present."
+      ok "Core metric fields are present and parseable."
       ok "Witness-size checks passed where an expected witness size is provided."
       ok "Required Regular benchmark families are present."
+      ok "Regular scaling families are present and have parameter metadata."
       ok "Regular reachability-separator checks passed."
       ok "Regular rescue case-study checks passed."
       ok "Regular awareness, mixed-class, automaton-only, regular-language, and multi-agent checks passed."
@@ -71,6 +78,20 @@ checkAllStable rows = do
     then pure ()
     else failNow ("Some Regular benchmarks were not stable: " ++ intercalate ", " bad)
 
+checkWitnessAgreement :: [Row] -> IO ()
+checkWitnessAgreement rows = do
+  let bad =
+        names
+          [ r
+          | r <- rows
+          , isKnown (value r "witness_agrees")
+          , value r "witness_agrees" /= "True"
+          ]
+
+  if null bad
+    then pure ()
+    else failNow ("Some Regular witness results disagree with model-checking results: " ++ intercalate ", " bad)
+
 checkPurposeFields :: [Row] -> IO ()
 checkPurposeFields rows = do
   let bad =
@@ -85,6 +106,76 @@ checkPurposeFields rows = do
   if null bad
     then pure ()
     else failNow ("Some Regular rows are missing purpose/parameter fields: " ++ intercalate ", " bad)
+
+checkCoreMetricFields :: [Row] -> IO ()
+checkCoreMetricFields rows = do
+  let requiredIntFields =
+        [ "states"
+        , "actions"
+        , "transitions"
+        , "formula_size"
+        ]
+
+      badIntFields =
+        [ value r "name" ++ ":" ++ field
+        | r <- rows
+        , field <- requiredIntFields
+        , not (isNonNegativeInt (value r field))
+        ]
+
+      badTime =
+        names
+          [ r
+          | r <- rows
+          , not (isNonNegativeNumber (value r "time_ms"))
+          ]
+
+      automatonFamilies =
+        [ "manual-single-good-class"
+        , "manual-good-bad-class"
+        , "manual-not-strongly-executable"
+        , "manual-unaware-good-action"
+        , "manual-agent-difference"
+        , "baking-good-method"
+        , "baking-confused-methods"
+        , "robot-aware-safe"
+        , "robot-unaware-safe"
+        , "rescue-regular"
+        , "automaton-only-size-positive"
+        , "automaton-only-size-negative"
+        , "class-count-good-last"
+        , "class-count-no-good"
+        , "all-good-mixed-class-positive"
+        , "mixed-class-negative"
+        , "regular-language-width-positive"
+        , "regular-language-width-negative"
+        , "regular-language-depth-positive"
+        , "regular-language-depth-negative"
+        , "awareness-positive"
+        , "basic-capable-unaware-negative"
+        , "multi-agent-one-knows"
+        , "multi-agent-last-fails"
+        ]
+
+      badAutomatonMetrics =
+        [ value r "name"
+        | r <- rows
+        , value r "family" `elem` automatonFamilies
+        , not (isNonNegativeOrNA (value r "automaton_states"))
+           || not (isNonNegativeOrNA (value r "automaton_transitions"))
+           || not (isNonNegativeOrNA (value r "automata"))
+        ]
+
+  if null badIntFields && null badTime && null badAutomatonMetrics
+    then pure ()
+    else failNow
+      ( "Some Regular rows have missing or non-numeric core metrics. Bad integer fields: "
+        ++ intercalate ", " badIntFields
+        ++ ". Bad time_ms rows: "
+        ++ intercalate ", " badTime
+        ++ ". Bad automaton metric rows: "
+        ++ intercalate ", " badAutomatonMetrics
+      )
 
 checkWitnessSizes :: [Row] -> IO ()
 checkWitnessSizes rows = do
@@ -148,6 +239,71 @@ checkRequiredFamilies rows = do
   if null missing
     then pure ()
     else failNow ("Missing Regular benchmark families: " ++ intercalate ", " missing)
+
+checkRegularScalingFamilies :: [Row] -> IO ()
+checkRegularScalingFamilies rows = do
+  checkScalingRows "states"
+    [ "line-positive"
+    , "line-broken-negative"
+    ]
+
+  checkScalingRows "automaton_states"
+    [ "automaton-only-size-positive"
+    , "automaton-only-size-negative"
+    ]
+
+  checkScalingRows "automata"
+    [ "class-count-good-last"
+    , "class-count-no-good"
+    ]
+
+  checkScalingRows "width"
+    [ "regular-language-width-positive"
+    , "regular-language-width-negative"
+    ]
+
+  checkScalingRows "depth"
+    [ "regular-language-depth-positive"
+    , "regular-language-depth-negative"
+    ]
+
+  checkScalingRows "formula_depth"
+    [ "formula-depth-positive"
+    ]
+
+  where
+    checkScalingRows :: String -> [String] -> IO ()
+    checkScalingRows parameterName families = do
+      let scalingRows =
+            [ r
+            | r <- rows
+            , value r "family" `elem` families
+            ]
+
+          badParameter =
+            names
+              [ r
+              | r <- scalingRows
+              , value r "primary_parameter" /= parameterName
+                 || not (isKnown (value r "parameter_value"))
+              ]
+
+      if null scalingRows
+        then failNow
+          ( "No Regular scaling rows found for parameter="
+            ++ parameterName
+            ++ "."
+          )
+        else pure ()
+
+      if null badParameter
+        then pure ()
+        else failNow
+          ( "Some Regular scaling rows have wrong/missing parameter metadata for parameter="
+            ++ parameterName
+            ++ ": "
+            ++ intercalate ", " badParameter
+          )
 
 checkManualCases :: [Row] -> IO ()
 checkManualCases rows = do
@@ -214,6 +370,10 @@ checkReachabilitySeparators rows = do
           | r <- checked
           , value r "ordinary_reachable" /= "True"
           ]
+
+  if null checked
+    then failNow "No Regular reachability-separator rows were found."
+    else pure ()
 
   if null bad
     then pure ()
@@ -561,6 +721,22 @@ value row key =
 isKnown :: String -> Bool
 isKnown x =
   not (x == "" || x == "NA")
+
+isNonNegativeInt :: String -> Bool
+isNonNegativeInt x =
+  case reads x :: [(Int, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
+
+isNonNegativeOrNA :: String -> Bool
+isNonNegativeOrNA x =
+  x == "NA" || isNonNegativeInt x
+
+isNonNegativeNumber :: String -> Bool
+isNonNegativeNumber x =
+  case reads x :: [(Double, String)] of
+    [(n, "")] -> n >= 0
+    _         -> False
 
 ok :: String -> IO ()
 ok msg =
