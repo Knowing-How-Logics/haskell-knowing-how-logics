@@ -1,4 +1,5 @@
 # KHora: A Model Checker for Knowing-How Logics
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19316699.svg)](https://doi.org/10.5281/zenodo.19316699)
 
 KHora is a model checking tool for knowing-how logics, written in Haskell. It currently supports:
 
