@@ -70,3 +70,41 @@ bench-clean:
 bench-check:
 	stack build
 	$(MAKE) bench-quick-report
+
+.PHONY: dev dev-build dev-clean dev-bench dev-verify dev-plot dev-open
+
+DEV_CSV := benchmarks/results/raw/quick.csv
+DEV_PLOTS := benchmarks/results/plots
+
+dev: dev-build dev-clean dev-bench dev-verify dev-plot
+	@echo ""
+	@echo "[OK] Build + benchmark + verification + plots finished."
+	@echo "CSV:   $(DEV_CSV)"
+	@echo "Plots: $(DEV_PLOTS)"
+
+dev-build:
+	stack build
+
+dev-clean:
+	rm -f benchmarks/results/raw/*.csv
+	rm -f benchmarks/results/plots/*.png
+	rm -f benchmarks/results/plots/*.csv
+	mkdir -p benchmarks/results/raw benchmarks/results/plots
+	touch benchmarks/results/raw/.gitkeep
+	touch benchmarks/results/plots/.gitkeep
+
+dev-bench:
+	stack exec khora-bench -- --quick
+
+dev-verify:
+	stack exec khora-check-basic -- $(DEV_CSV)
+	stack exec khora-check-intermediate -- $(DEV_CSV)
+	stack exec khora-check-regular -- $(DEV_CSV)
+	stack exec khora-check-budget -- $(DEV_CSV)
+	stack exec khora-check-all -- $(DEV_CSV)
+
+dev-plot:
+	python3 benchmarks/scripts/summarize_results.py $(DEV_CSV)
+
+dev-open:
+	open $(DEV_PLOTS)

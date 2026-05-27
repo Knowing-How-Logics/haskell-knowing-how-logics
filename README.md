@@ -26,7 +26,11 @@ git clone https://github.com/Knowing-How-Logics/haskell-knowing-how-logics.git
 cd haskell-knowing-how-logics
 stack build
 ```
-
+### How to use?
+build + clean up + run benchmark + verify data + plot
+```shell
+make dev
+```
 
 ## References
 
