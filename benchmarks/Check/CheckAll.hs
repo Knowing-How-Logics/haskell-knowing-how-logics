@@ -504,3 +504,17 @@ parseLine input =
 
         x : xs ->
           go fields (x : field) inQuotes xs
+
+checkWitnessAgreement :: [Row] -> IO ()
+checkWitnessAgreement rows = do
+  let bad =
+        names
+          [ r
+          | r <- rows
+          , isKnown (value r "witness_agrees")
+          , value r "witness_agrees" /= "True"
+          ]
+
+  if null bad
+    then pure ()
+    else failNow ("Some witness results disagree with model-checking results: " ++ intercalate ", " bad)

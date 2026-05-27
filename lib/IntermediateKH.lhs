@@ -33,7 +33,8 @@ truthSetI m f =
     [ s | s <- toList (states m), isTrueI (m, s) f ]
 
 isTrueI :: (AbilityMap, State) -> IForm -> Bool
-isTrueI _ IT = True
+isTrueI _ IT =
+    True
 isTrueI (m, s) (IP p) =
     p `elem` valuationAt (valuation m) s
 isTrueI (m, s) (INeg f) =
@@ -43,9 +44,14 @@ isTrueI (m, s) (IConj f g) =
 isTrueI (m, _) (Khm psi chi phi) =
     khmCompleteBySets m psiStates chiStates phiStates
   where
-    psiStates = truthSetI m psi
-    chiStates = truthSetI m chi
-    phiStates = truthSetI m phi
+    psiStates =
+        truthSetI m psi
+
+    chiStates =
+        truthSetI m chi
+
+    phiStates =
+        truthSetI m phi
 \end{code}
 
 \begin{code}
@@ -69,7 +75,8 @@ data IProductState = IProductState
 
 \begin{code}
 normaliseStatesI :: [State] -> [State]
-normaliseStatesI = sort . nub
+normaliseStatesI =
+    sort . nub
 
 normaliseIComponent :: IComponent -> IComponent
 normaliseIComponent (s, (xs, flag)) =
@@ -101,11 +108,13 @@ allHaveSuccessorI rs xs a =
     all (hasSuccessorI rs a) xs
 
 allSatisfyI :: [State] -> [State] -> Bool
-allSatisfyI allowedStates = all (`elem` allowedStates)
+allSatisfyI allowedStates =
+    all (`elem` allowedStates)
 \end{code}
 
 \begin{code}
-stepIComponent:: Relations
+stepIComponent
+    :: Relations
     -> [State]
     -> Action
     -> Bool
@@ -191,39 +200,8 @@ acceptingIProductState st =
 \end{code}
 
 \begin{code}
-khmCompleteBySets :: AbilityMap -> [State] -> [State] -> [State] -> Bool
-khmCompleteBySets m psiStates chiStates phiStates =
-    existsReachable acceptingIProductState next initialState
-  where
-    rs :: Relations
-    rs =
-        transitions m
-
-    acts :: [Action]
-    acts =
-        actionsOf rs
-
-    allStates :: [State]
-    allStates =
-        toList (states m)
-
-    negPhiStates :: [State]
-    negPhiStates =
-        [ s | s <- allStates, s `notElem` phiStates ]
-
-    initialState :: IProductState
-    initialState =
-        initialIProductState psiStates negPhiStates
-
-    next :: IProductState -> [IProductState]
-    next current =
-        [ stepIProductState rs chiStates a current
-        | a <- acts
-        ]
-\end{code}
-
-\begin{code}
-findWitnessKhmBySets:: AbilityMap
+findWitnessKhmBySets
+    :: AbilityMap
     -> [State]
     -> [State]
     -> [State]
@@ -256,6 +234,14 @@ findWitnessKhmBySets m psiStates chiStates phiStates =
         [ (a, stepIProductState rs chiStates a current)
         | a <- acts
         ]
+
+khmCompleteBySets :: AbilityMap -> [State] -> [State] -> [State] -> Bool
+khmCompleteBySets m psiStates chiStates phiStates =
+    case findWitnessKhmBySets m psiStates chiStates phiStates of
+        Just _ ->
+            True
+        Nothing ->
+            False
 \end{code}
 
 \begin{code}

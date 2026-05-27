@@ -1,13 +1,13 @@
 \begin{code}
 module BudgetRegKH where
 
-import Data.List (nub)
+import qualified Data.Map.Strict as M
+import Data.List (foldl')
 import Data.Maybe (fromMaybe)
 
 import LTS
 import Automata
 import RegKH
-import GraphSearch
 \end{code}
 
 \begin{code}
@@ -19,6 +19,8 @@ type BudgetProductVertex = (State, AState)
 type Weight = [Int]
 type VectorBudget = [Int]
 type VectorWeightFunction = [((State, Action), Weight)]
+
+type DistanceMap = M.Map BudgetProductVertex Cost
 \end{code}
 
 \begin{code}
@@ -92,35 +94,13 @@ data VectorBudgetRegForm
 \end{code}
 
 \begin{code}
-isProductiveState :: Automaton -> AState -> Bool
-isProductiveState aut q =
-    existsReachable (`elem` autFinal aut) next q
-  where
-    next :: AState -> [AState]
-    next current =
-        nub [ q'
-            | a <- autAlphabet aut
-            , q' <- successorsA aut current a
-            ]
-
-allStatesProductive :: Automaton -> Bool
-allStatesProductive aut =
-    all (isProductiveState aut) (autStates aut)
-\end{code}
-
-\begin{code}
-lookupDistance :: BudgetProductVertex -> [(BudgetProductVertex, Cost)] -> Maybe Cost
+lookupDistance :: BudgetProductVertex -> DistanceMap -> Maybe Cost
 lookupDistance =
-    lookup
+    M.lookup
 
-updateDistance :: BudgetProductVertex -> Cost -> [(BudgetProductVertex, Cost)] -> [(BudgetProductVertex, Cost)]
-updateDistance v d [] =
-    [(v, d)]
-updateDistance v d ((u, oldD) : rest)
-    | v == u =
-        (u, min d oldD) : rest
-    | otherwise =
-        (u, oldD) : updateDistance v d rest
+updateDistance :: BudgetProductVertex -> Cost -> DistanceMap -> DistanceMap
+updateDistance v d =
+    M.insertWith min v d
 \end{code}
 
 \begin{code}
@@ -143,7 +123,8 @@ budgetSuccessors m aut (s, q) =
 \begin{code}
 unsafeBudgetFrom :: BudgetRegLTSU -> Automaton -> Budget -> BudgetProductVertex -> Bool
 unsafeBudgetFrom m aut budget start =
-    any belowBudget finalDistances || hasRelevantNegativeCycle finalDistances
+    any belowBudget (M.toList finalDistances)
+    || hasRelevantNegativeCycle finalDistances
   where
     vertices :: [BudgetProductVertex]
     vertices =
@@ -156,15 +137,15 @@ unsafeBudgetFrom m aut budget start =
         , (v', c) <- budgetSuccessors m aut v
         ]
 
-    initialDistances :: [(BudgetProductVertex, Cost)]
+    initialDistances :: DistanceMap
     initialDistances =
-        [(start, 0)]
+        M.singleton start 0
 
-    relaxOnce :: [(BudgetProductVertex, Cost)] -> [(BudgetProductVertex, Cost)]
+    relaxOnce :: DistanceMap -> DistanceMap
     relaxOnce distances =
-        foldl relaxEdge distances edgeList
+        foldl' relaxEdge distances edgeList
 
-    relaxEdge :: [(BudgetProductVertex, Cost)] -> (BudgetProductVertex, BudgetProductVertex, Cost) -> [(BudgetProductVertex, Cost)]
+    relaxEdge :: DistanceMap -> (BudgetProductVertex, BudgetProductVertex, Cost) -> DistanceMap
     relaxEdge distances (u, v, c) =
         case lookupDistance u distances of
             Nothing ->
@@ -172,7 +153,7 @@ unsafeBudgetFrom m aut budget start =
             Just du ->
                 updateDistance v (du + c) distances
 
-    finalDistances :: [(BudgetProductVertex, Cost)]
+    finalDistances :: DistanceMap
     finalDistances =
         iterate relaxOnce initialDistances !! length vertices
 
@@ -180,7 +161,7 @@ unsafeBudgetFrom m aut budget start =
     belowBudget (_, d) =
         budget + d < 0
 
-    hasRelevantNegativeCycle :: [(BudgetProductVertex, Cost)] -> Bool
+    hasRelevantNegativeCycle :: DistanceMap -> Bool
     hasRelevantNegativeCycle distances =
         any canStillImprove edgeList
       where
@@ -197,8 +178,7 @@ unsafeBudgetFrom m aut budget start =
 \begin{code}
 checkCond3Budget1D :: BudgetRegLTSU -> Automaton -> Budget -> [State] -> Bool
 checkCond3Budget1D m aut budget phiStates =
-    allStatesProductive aut
-    && not (any unsafe starts)
+    not (any unsafe starts)
   where
     starts :: [BudgetProductVertex]
     starts =
@@ -244,7 +224,8 @@ budgetSuccessorsAtDimension m aut k (s, q) =
 \begin{code}
 unsafeBudgetFromAtDimension :: VectorBudgetRegLTSU -> Automaton -> Int -> Budget -> BudgetProductVertex -> Bool
 unsafeBudgetFromAtDimension m aut k budget start =
-    any belowBudget finalDistances || hasRelevantNegativeCycle finalDistances
+    any belowBudget (M.toList finalDistances)
+    || hasRelevantNegativeCycle finalDistances
   where
     vertices :: [BudgetProductVertex]
     vertices =
@@ -257,15 +238,15 @@ unsafeBudgetFromAtDimension m aut k budget start =
         , (v', c) <- budgetSuccessorsAtDimension m aut k v
         ]
 
-    initialDistances :: [(BudgetProductVertex, Cost)]
+    initialDistances :: DistanceMap
     initialDistances =
-        [(start, 0)]
+        M.singleton start 0
 
-    relaxOnce :: [(BudgetProductVertex, Cost)] -> [(BudgetProductVertex, Cost)]
+    relaxOnce :: DistanceMap -> DistanceMap
     relaxOnce distances =
-        foldl relaxEdge distances edgeList
+        foldl' relaxEdge distances edgeList
 
-    relaxEdge :: [(BudgetProductVertex, Cost)] -> (BudgetProductVertex, BudgetProductVertex, Cost) -> [(BudgetProductVertex, Cost)]
+    relaxEdge :: DistanceMap -> (BudgetProductVertex, BudgetProductVertex, Cost) -> DistanceMap
     relaxEdge distances (u, v, c) =
         case lookupDistance u distances of
             Nothing ->
@@ -273,7 +254,7 @@ unsafeBudgetFromAtDimension m aut k budget start =
             Just du ->
                 updateDistance v (du + c) distances
 
-    finalDistances :: [(BudgetProductVertex, Cost)]
+    finalDistances :: DistanceMap
     finalDistances =
         iterate relaxOnce initialDistances !! length vertices
 
@@ -281,7 +262,7 @@ unsafeBudgetFromAtDimension m aut k budget start =
     belowBudget (_, d) =
         budget + d < 0
 
-    hasRelevantNegativeCycle :: [(BudgetProductVertex, Cost)] -> Bool
+    hasRelevantNegativeCycle :: DistanceMap -> Bool
     hasRelevantNegativeCycle distances =
         any canStillImprove edgeList
       where
@@ -295,12 +276,10 @@ unsafeBudgetFromAtDimension m aut k budget start =
                     False
 \end{code}
 
-
 \begin{code}
 checkCond3VectorBudget :: VectorBudgetRegLTSU -> Automaton -> VectorBudget -> [State] -> Bool
 checkCond3VectorBudget m aut budget phiStates =
-    allStatesProductive aut
-    && all dimensionSafe dimensions
+    all dimensionSafe dimensions
   where
     dimensions :: [Int]
     dimensions =
@@ -335,7 +314,7 @@ findWitnessAutomatonBR
     -> BudgetRegForm
     -> Maybe Automaton
 findWitnessAutomatonBR m budget agent phi psi =
-    findFirst goodAutomaton (getAgentAutsBR m agent)
+    findFirst goodAutomaton (map trimAutomaton (getAgentAutsBR m agent))
   where
     plainModel :: RegLTSU
     plainModel =
@@ -351,7 +330,8 @@ findWitnessAutomatonBR m budget agent phi psi =
 
     goodAutomaton :: Automaton -> Bool
     goodAutomaton aut =
-        checkCond1 plainModel aut phiStates
+        not (null (autInitial aut))
+        && checkCond1 plainModel aut phiStates
         && checkCond2 plainModel aut phiStates negPsiStates
         && checkCond3Budget1D m aut budget phiStates
 
@@ -382,9 +362,15 @@ getAgentAutsVBR :: VectorBudgetRegLTSU -> Agent -> [Automaton]
 getAgentAutsVBR m agent =
     fromMaybe [] (lookup agent (uncertaintyVBR m))
 
-findWitnessAutomatonVBR :: VectorBudgetRegLTSU  -> VectorBudget -> Agent -> VectorBudgetRegForm -> VectorBudgetRegForm -> Maybe Automaton
+findWitnessAutomatonVBR
+    :: VectorBudgetRegLTSU
+    -> VectorBudget
+    -> Agent
+    -> VectorBudgetRegForm
+    -> VectorBudgetRegForm
+    -> Maybe Automaton
 findWitnessAutomatonVBR m budget agent phi psi =
-    findFirst goodAutomaton (getAgentAutsVBR m agent)
+    findFirst goodAutomaton (map trimAutomaton (getAgentAutsVBR m agent))
   where
     plainModel :: RegLTSU
     plainModel =
@@ -400,7 +386,8 @@ findWitnessAutomatonVBR m budget agent phi psi =
 
     goodAutomaton :: Automaton -> Bool
     goodAutomaton aut =
-        checkCond1 plainModel aut phiStates
+        not (null (autInitial aut))
+        && checkCond1 plainModel aut phiStates
         && checkCond2 plainModel aut phiStates negPsiStates
         && checkCond3VectorBudget m aut budget phiStates
 

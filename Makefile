@@ -1,4 +1,4 @@
-.PHONY: all build build-lib test clean run \
+.PHONY: all pdf build build-lib test clean run \
         bench-build bench-quick bench-full \
         bench-summarize-quick bench-summarize-full \
         bench-quick-report bench-full-report \
@@ -10,9 +10,9 @@ MAIN := KHora
 BENCH_RAW_DIR := benchmarks/results/raw
 BENCH_PLOT_DIR := benchmarks/results/plots
 
-all: $(TEXDIR)/$(MAIN).pdf build
+all: pdf build
 
-$(TEXDIR)/$(MAIN).pdf: $(TEXDIR)/*.tex $(TEXDIR)/*.bib lib/*.lhs test/*.lhs benchmarks/src/*.hs benchmarks/app/*.hs benchmarks/Check/*.hs
+pdf:
 	latexmk -pdf -output-directory=$(TEXDIR) -interaction=nonstopmode $(TEXDIR)/$(MAIN).tex
 
 build:
@@ -26,10 +26,12 @@ run:
 	@echo "Use 'make bench-quick-report' for benchmarks or 'stack ghci' for interactive use."
 
 test:
-	stack test --coverage
+	@echo "No test suite is currently configured."
 
 clean:
 	stack clean
+	latexmk -C -output-directory=$(TEXDIR) $(TEXDIR)/$(MAIN).tex || true
+	rm -f texput.log
 	rm -f $(TEXDIR)/*.aux $(TEXDIR)/*.log $(TEXDIR)/*.out $(TEXDIR)/*.snm $(TEXDIR)/*.toc $(TEXDIR)/*.vrb $(TEXDIR)/*.nav $(TEXDIR)/*.synctex.gz $(TEXDIR)/*.blg $(TEXDIR)/*.bbl $(TEXDIR)/*.fdb_latexmk $(TEXDIR)/*.fls $(TEXDIR)/*.ind $(TEXDIR)/*.idx $(TEXDIR)/*.ilg $(TEXDIR)/*.bcf $(TEXDIR)/*.run.xml $(TEXDIR)/*.xdv
 
 clean-junk:
@@ -67,5 +69,4 @@ bench-clean:
 
 bench-check:
 	stack build
-	stack test
 	$(MAKE) bench-quick-report

@@ -36,13 +36,13 @@ $\mathcal{M}, s \models Kh(\psi, \varphi)$ & \textit{iff} & & there exists a $\s
 The $Kh(\psi,\varphi)$ can be interpreted as "the agent knows how to achieve $\varphi$ given $\psi$". Notice that the $Kh$ is a global modality. Namely, either it holds for all states, or none of them.
 
 \subsection{Haskell Representation}
-The syntax is modelled following Definition~2.1. By using the $\mathsf{PSPACE}$-algorithm from \cite{Demri2023}.\\
+
 
 \hide{
 \begin{code}
 module BasicKH where
 
-import Data.List (nub, delete, sort)
+import Data.List (nub, sort)
 import Data.List.NonEmpty (NonEmpty(..), toList)
 import Text.Parsec hiding (State)
 import LTS
@@ -56,7 +56,6 @@ data Form = P Proposition | Neg Form | Conj Form Form | KH Form Form | T
 
 \end{code}
 
-\hide{
 
 Following Definition~2.2, we model the LTS as follows.
 When creating a LTS, consider that states is a non-empty list and therefore must use the :| constructor, i.e. (n :| [n+1..]). \\
@@ -241,7 +240,7 @@ findWitness m f g =
     psiStates =
         truthSet m g
 \end{code}
-}
+
 
 \subsection{Parsing for $\mathcal{L}_{Kh}$}
 Formulas may be created in \texttt{ghci} using \texttt{parseForm}. We omit most of the code here. The following inputs are accepted:

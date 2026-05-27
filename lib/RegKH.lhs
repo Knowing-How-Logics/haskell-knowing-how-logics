@@ -222,6 +222,42 @@ data RegLTSU = RegLTSU
 getAgentAuts :: RegLTSU -> Agent -> [Automaton]
 getAgentAuts m agent =
     fromMaybe [] (lookup agent (uncertainty m))
+
+productiveStates :: Automaton -> [AState]
+productiveStates aut =
+    [ q
+    | q <- autStates aut
+    , existsReachable (`elem` autFinal aut) next q
+    ]
+  where
+    next :: AState -> [AState]
+    next q =
+        nub
+            [ q'
+            | a <- autAlphabet aut
+            , q' <- successorsA aut q a
+            ]
+
+trimAutomaton :: Automaton -> Automaton
+trimAutomaton aut =
+    Automaton
+        { autStates =
+            productive
+        , autAlphabet =
+            autAlphabet aut
+        , autTransitions =
+            [ ((q, a), filter (`elem` productive) qs)
+            | ((q, a), qs) <- autTransitions aut
+            , q `elem` productive
+            ]
+        , autInitial =
+            filter (`elem` productive) (autInitial aut)
+        , autFinal =
+            filter (`elem` productive) (autFinal aut)
+        }
+  where
+    productive =
+        productiveStates aut
 \end{code}
 
 \subsection{Model checker in Haskell}
@@ -430,9 +466,6 @@ truthSet m f = [s | s <- statesM m, isTrueReg (m, s) f]
 
 -- Satisfaction relation for the propositional fragment
 isTrueReg :: (RegLTSU, State) -> RegForm -> Bool
-\end{code}
-
-\begin{code}
 isTrueReg (m, s) (Prop p) =
     p `elem` valuationAt (valuationM m) s
 isTrueReg (m, s) (Not f) =
@@ -441,15 +474,14 @@ isTrueReg (m, s) (Disj f g) =
     isTrueReg (m, s) f || isTrueReg (m, s) g
 
 -- Kh_a(phi, psi) holds iff there exists A in U_a such that
--- (1) [[phi]] is subset of SE(L(A))      
--- (2) R_{L(A)}([[phi]]) is subset of [[psi]]  
+-- (1) [[phi]] is subset of SE(L(A))
+-- (2) R_{L(A)}([[phi]]) is subset of [[psi]]
 isTrueReg (m, _) (KHI agent phi psi) =
-    any (\aut -> checkCond1 m aut phiStates
-              && checkCond2 m aut phiStates negPsiStates
-    ) (getAgentAuts m agent)
-  where
-    phiStates    = truthSet m phi          -- [[phi]]
-    negPsiStates = truthSet m (Not psi)    -- [[neg psi]]
+    case findWitnessAutomaton m agent phi psi of
+        Just _ ->
+            True
+        Nothing ->
+            False
 
 -- Infix alias for the satisfaction relation
 (||=) :: (RegLTSU, State) -> RegForm -> Bool
@@ -459,17 +491,23 @@ findWitnessAutomaton :: RegLTSU -> Agent -> RegForm -> RegForm -> Maybe Automato
 findWitnessAutomaton m agent phi psi =
     firstGood (getAgentAuts m agent)
   where
-    phiStates    = truthSet m phi
-    negPsiStates = truthSet m (Not psi)
+    phiStates =
+        truthSet m phi
+
+    negPsiStates =
+        truthSet m (Not psi)
 
     isGoodAutomaton aut =
         checkCond1 m aut phiStates
         && checkCond2 m aut phiStates negPsiStates
 
-    firstGood [] = Nothing
+    firstGood [] =
+        Nothing
     firstGood (aut:auts)
-        | isGoodAutomaton aut = Just aut
-        | otherwise           = firstGood auts
+        | isGoodAutomaton aut =
+            Just aut
+        | otherwise =
+            firstGood auts
 \end{code}
 
 \subsection{Parsing for $reg\text{-}\mathcal{L}^U_{Kh}$}
@@ -528,160 +566,3 @@ evalRegForm (m, s) str =
 
 \end{code}
 
-\subsection{Random Generation for $reg\text{-}\mathcal{L}^U_{Kh}$}
-
-\subsubsection{Model Generation with Parameters}
-
-To facilitate testing in the multi-agent setting, we provide a function that generates a random reg-LTS$^U$ model with a fixed number of states, propositions, actions, and agents. 
-We omit the code here.
-
-The generated model includes:
-\begin{itemize}
-    \item a finite set of states $\{1,\dots,n\}$,
-    \item a set of actions $\{1,\dots,k\}$,
-    \item a valuation assigning each state a random subset of propositions $\{1,\dots,m\}$,
-    \item a family of action-labelled transitions,
-    \item and for each agent, a set of automata representing uncertainty over plans.
-\end{itemize}
-
-In addition, we implement a sanity check on the uncertainty component. This verify that the languages recognized by distinct automata for the same agent are pairwise disjoint.
-
-
-\hide{
-\begin{code}
-sanityCheckAgentAutomata :: [Automaton] -> Bool
-sanityCheckAgentAutomata auts =
-    all sanityCheckAutomaton auts && pairwiseDisjointAutomata auts
-
-sanityCheckRegLTSU :: RegLTSU -> Bool
-sanityCheckRegLTSU m =
-    all (sanityCheckAgentAutomata . snd) (uncertainty m)
-\end{code}
-}
-
-\hide{
-\begin{code}
--- Generate a random reg-LTS^U model with parameters
--- n: number of states
--- m: number of propositions
--- k: number of actions
--- a: number of agents
-generateRegLTSU :: Int -> Int -> Int -> Int -> Gen RegLTSU
-generateRegLTSU n m k numAgents = do
-    let n' = max 1 n
-    let m' = max 0 m
-    let k' = max 0 k
-    let a' = max 1 numAgents
-
-    let sts = [1 .. n']
-    let acts = [1 .. k']
-    let props = [1 .. m']
-
-    -- Generate transitions
-    rels <- mapM (\_ -> generateRandomRel sts) acts
-
-    -- Generate valuations
-    vals <- mapM (generateRandomValuation props) sts
-
-    -- Generate uncertainty (automata per agent)
-    auts <- mapM (\_ -> generateAutomata sts acts) [1 .. a']
-
-    return $ RegLTSU sts (zip acts rels) (zip [1..] auts) vals
-
-
--- Generate a random relation (same style as single-agent)
-generateRandomRel :: [State] -> Gen Rel
-generateRandomRel sts = do
-    numEdges <- choose (0, length sts * length sts)
-    edges <- vectorOf numEdges $ do
-        u <- elements sts
-        v <- elements sts
-        return (u, v)
-    return (nub edges)
-
-
--- Generate valuation for a state
-generateRandomValuation :: [Proposition] -> State -> Gen (State, [Proposition])
-generateRandomValuation props s = do
-    ps <- sublistOf props
-    return (s, ps)
-
-
--- Generate a list of automata for one agent
-generateAutomata :: [State] -> [Action] -> Gen [Automaton]
-generateAutomata sts acts = do
-    numAuts <- chooseInt (1, 3)
-    auts <- vectorOf numAuts (generateAutomaton sts acts)
-    if sanityCheckAgentAutomata auts
-       then return auts
-       else generateAutomata sts acts
-
-
--- Generate a simple random automaton
-generateAutomaton :: [State] -> [Action] -> Gen Automaton
-generateAutomaton sts acts = do
-    let qs = sts
-
-    trans <- sequence
-        [ do next <- sublistOf qs
-             return ((q, a), next)
-        | q <- qs, a <- acts
-        ]
-
-    initStates <- sublistOf qs
-    finalStates <- sublistOf qs
-
-    return $ Automaton
-        { autStates = qs
-        , autAlphabet = acts
-        , autTransitions = trans
-        , autInitial = if null initStates then [head qs] else initStates
-        , autFinal = if null finalStates then [head qs] else finalStates
-        }
-\end{code}
-}
-We do a small example here to generate models and test formulas interactively using \texttt{ghci}:
-
-\begin{verbatim}
-ghci> m <- generate (generateRegLTSU 3 2 1 1)
-
-ghci> print m
-RegLTSU {statesM = [1,2,3], 
-relationsM = [(1,[(1,3),(3,2),(2,2),(2,1)])], 
-uncertainty = [(1,[
-    ATMN {statesA = [1,2,3], actionsA = [1], 
-    transitionsA = [((1,1),[]),((2,1),[1,3]),((3,1),[2])], 
-    initial = [1,3], final = [1]}])], 
-    valuationM = [(1,[]),(2,[1]),(3,[])]}
-
-ghci> sanityCheckRegLTSU m
-True
-
-ghci> evalRegForm (m, 1) "KH1 p1 p2"
-False
-\end{verbatim}
-
-\subsubsection{Arbitrary Instances for QuickCheck}
-
-To support property-based testing, we define generators for both formulas and models in the multi-agent setting.
-
-Since the structure of formulas is independent of any particular model, the generator is defined separately from model generation. However, to avoid mismatches between formulas and models, we parameterize the generator by the number of agents. This ensures that all occurrences of the modality $Kh_i$ refer only to valid agent indices.\\
-
-\begin{code}
--- Generate a random RegForm with bounded size and a fixed number of agents
-generateRegForm :: Int -> Int -> Gen RegForm
-generateRegForm numAgents = randomRegForm
-  where
-    numAgents' = max 1 numAgents
-
-    randomRegForm :: Int -> Gen RegForm
-    randomRegForm 0 = Prop <$> choose (1, 5)
-    randomRegForm n = oneof
-        [ Prop <$> choose (1, 5)
-        , Not <$> randomRegForm (n - 1)
-        , Disj <$> randomRegForm (n `div` 2) <*> randomRegForm (n `div` 2)
-        , KHI <$> choose (1, numAgents')
-              <*> randomRegForm (n `div` 2)
-              <*> randomRegForm (n `div` 2)
-        ]
-\end{code}
