@@ -5,16 +5,21 @@ import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.FilePath (takeDirectory)
 
+import Data.List (isPrefixOf)
+
 import Bench.Basic (basicBenchmarks)
 import Bench.Budget (budgetBenchmarks)
 import Bench.Common
 import Bench.Intermediate (intermediateBenchmarks)
+import Bench.Random (defaultRandomCases, randomBenchmarks)
 import Bench.Regular (regularBenchmarks)
 
 data Options = Options
-  { optMode  :: BenchMode
-  , optSuite :: String
-  , optOut   :: Maybe FilePath
+  { optMode        :: BenchMode
+  , optSuite       :: String
+  , optOut         :: Maybe FilePath
+  , optRandomCases :: Int
+  , optSeed        :: Int
   }
 
 main :: IO ()
@@ -39,8 +44,19 @@ main = do
           suite =
             optSuite opts
 
+          requestedRandomSuite =
+            suite == "random" || "random-" `isPrefixOf` suite
+
+          randomCount =
+            if optRandomCases opts > 0
+               then optRandomCases opts
+               else if requestedRandomSuite
+                    then defaultRandomCases mode
+                    else 0
+
           cases =
-            filter (wantedSuite suite) (allBenchmarks mode)
+            filter (wantedSuite suite)
+              (allBenchmarks mode ++ randomBenchmarks mode (optSeed opts) randomCount)
 
       if null cases
         then do
@@ -54,6 +70,8 @@ main = do
       putStrLn ("Running " ++ show (length cases) ++ " benchmark cases...")
       putStrLn ("mode=" ++ modeName mode)
       putStrLn ("suite=" ++ suite)
+      putStrLn ("seed=" ++ show (optSeed opts))
+      putStrLn ("random_cases_per_logic=" ++ show randomCount)
       putStrLn ("output=" ++ outFile)
 
       results <- mapM runOne cases
@@ -68,6 +86,8 @@ defaultOptions =
     { optMode = Quick
     , optSuite = "all"
     , optOut = Nothing
+    , optRandomCases = 0
+    , optSeed = 20260529
     }
 
 parseArgs :: Options -> [String] -> Either String Options
@@ -100,6 +120,34 @@ parseArgs opts ("--out" : value : rest)
 parseArgs _ ["--out"] =
   Left "--out expects a file path."
 
+parseArgs opts ("--random" : value : rest)
+  | isFlag value =
+      Left "--random expects a non-negative integer, but got another flag."
+
+  | otherwise =
+      case reads value of
+        [(n, "")] | n >= 0 ->
+          parseArgs opts { optRandomCases = n } rest
+        _ ->
+          Left "--random expects a non-negative integer."
+
+parseArgs _ ["--random"] =
+  Left "--random expects a non-negative integer."
+
+parseArgs opts ("--seed" : value : rest)
+  | isFlag value =
+      Left "--seed expects an integer, but got another flag."
+
+  | otherwise =
+      case reads value of
+        [(seed, "")] ->
+          parseArgs opts { optSeed = seed } rest
+        _ ->
+          Left "--seed expects an integer."
+
+parseArgs _ ["--seed"] =
+  Left "--seed expects an integer."
+
 parseArgs _ (unknown : _) =
   Left ("unknown argument: " ++ unknown)
 
@@ -113,7 +161,7 @@ usage :: String
 usage =
   unlines
     [ "Usage:"
-    , "  stack exec khora-bench -- [--quick|--full] [--suite SUITE] [--out FILE]"
+    , "  stack exec khora-bench -- [--quick|--full] [--suite SUITE] [--out FILE] [--random N] [--seed SEED]"
     , ""
     , "Examples:"
     , "  stack exec khora-bench -- --quick"
@@ -125,6 +173,8 @@ usage =
     , "  stack exec khora-bench -- --full --suite rescue-intermediate"
     , "  stack exec khora-bench -- --full --suite rescue-budget"
     , "  stack exec khora-bench -- --full --suite regular --out benchmarks/results/raw/regular-full.csv"
+    , "  stack exec khora-bench -- --quick --suite random --random 20 --seed 20260529"
+    , "  stack exec khora-bench -- --quick --suite basic --random 10"
     , ""
     , "Available suites:"
     , "  all"
@@ -132,6 +182,11 @@ usage =
     , "  intermediate"
     , "  regular"
     , "  budget"
+    , "  random"
+    , "  random-basic"
+    , "  random-intermediate"
+    , "  random-regular"
+    , "  random-budget"
     , "  or any family name, such as line-positive, awareness-positive, trap-reachable-negative,"
     , "  rescue-basic, rescue-regular, rescue-intermediate, rescue-budget"
     ]
@@ -148,5 +203,7 @@ allBenchmarks mode =
 wantedSuite :: String -> BenchCase -> Bool
 wantedSuite "all" _ =
   True
+wantedSuite "random" c =
+  "random-" `isPrefixOf` caseFamily c
 wantedSuite suite c =
   suite == caseLogic c || suite == caseFamily c

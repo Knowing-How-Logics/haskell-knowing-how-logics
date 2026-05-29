@@ -1,7 +1,7 @@
 .PHONY: all pdf build build-lib test clean run \
-        bench-build bench-quick bench-full \
+        bench-build bench-quick bench-random bench-full \
         bench-summarize-quick bench-summarize-full \
-        bench-quick-report bench-full-report \
+        bench-quick-report bench-random-report bench-full-report \
         bench-clean bench-check clean-junk
 
 TEXDIR := tex
@@ -45,6 +45,10 @@ bench-quick: bench-build
 	mkdir -p $(BENCH_RAW_DIR) $(BENCH_PLOT_DIR)
 	stack exec khora-bench -- --quick
 
+bench-random: bench-build
+	mkdir -p $(BENCH_RAW_DIR) $(BENCH_PLOT_DIR)
+	stack exec khora-bench -- --quick --suite random --random 20 --seed 20260529 --out $(BENCH_RAW_DIR)/random.csv
+
 bench-full: bench-build
 	mkdir -p $(BENCH_RAW_DIR) $(BENCH_PLOT_DIR)
 	stack exec khora-bench -- --full
@@ -58,6 +62,9 @@ bench-summarize-full:
 bench-quick-report: bench-quick bench-summarize-quick
 
 bench-full-report: bench-full bench-summarize-full
+
+bench-random-report: bench-random
+	python3 benchmarks/scripts/summarize_results.py $(BENCH_RAW_DIR)/random.csv
 
 bench-clean:
 	rm -f $(BENCH_RAW_DIR)/*.csv
